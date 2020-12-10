@@ -1,0 +1,7 @@
+venv/
+.vscode/
+__pycache__/
+.ipynb_checkpoints/
+notes.md
+*/config.json
+test*
