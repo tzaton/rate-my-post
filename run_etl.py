@@ -24,10 +24,10 @@ if __name__ == "__main__":
                            help="Destination S3 bucket",
                            required=True)
     argparser.add_argument("--chunk-size",
-                           help="Chunk size (in bytes) to use for splitting the files = max file size for transfer",
+                           help="Chunk size (in megabytes) to use for splitting the files = max file size for transfer (the same for download and upload)",
                            required=False,
                            type=int,
-                           default=50 * 1024 * 1024)
+                           default=50)
     argparser.add_argument("--logging-level",
                            help="Logging level",
                            required=False,
@@ -43,6 +43,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=getattr(logging, args.logging_level),
                         format='%(asctime)s - [%(levelname)s] - %(name)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
+    logger = logging.getLogger(__name__)
     for l in ["urllib3", "botocore", "s3transfer"]:
         logging.getLogger(l).setLevel(logging.WARNING)
 
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     # Run ETL: download files from HTTP and upload to S3
     run_pipeline(file_list=file_list,
-                 intermediate_local=args.local_dir,
-                 target_bucket=args.bucket,
-                 chunk_size=args.chunk_size,
-                 overwrite=args.overwrite)
+                intermediate_local=args.local_dir,
+                target_bucket=args.bucket,
+                chunk_size=args.chunk_size,
+                overwrite=args.overwrite)
