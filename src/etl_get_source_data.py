@@ -47,7 +47,8 @@ if __name__ == "__main__":
         logging.getLogger(l).setLevel(logging.WARNING)
 
     if args.dataset_file is not None:
-        file_list = args.dataset_file.read().splitlines()
+        file_list = [l for l in args.dataset_file.read().splitlines() if l and
+                     not l.startswith("#")]
     else:
         file_list = args.dataset_name
 
