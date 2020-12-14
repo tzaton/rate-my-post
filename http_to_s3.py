@@ -16,6 +16,7 @@ from py7zr import unpack_7zarchive
 logger = logging.getLogger(__name__)
 data_parent_url = os.environ["DATA_PARENT_URL"]
 
+
 def get_file_size(file_name):
     file_url = data_parent_url + file_name
     with requests.head(file_url, allow_redirects=True) as r:
@@ -40,10 +41,12 @@ def upload_file(s3_client, path, bucket, key, overwrite, **kwargs):
     if overwrite is False:
         try:
             s3_client.head_object(Key=key, Bucket=bucket)
-            logger.info("Object already exists: /%s/%s. Skipping because `overwrite`=False was specified", bucket, key)
+            logger.info(
+                "Object already exists: /%s/%s. Skipping because `overwrite`=False was specified", bucket, key)
             upload_flag = False
         except ClientError:
-            logger.info("Object already exists: /%s/%s. It will be overwritten because `overwrite`=True was specified", bucket, key)
+            logger.info(
+                "Object already exists: /%s/%s. It will be overwritten because `overwrite`=True was specified", bucket, key)
     if upload_flag is True:
         s3_client.upload_file(path,
                               Bucket=bucket,
@@ -82,7 +85,8 @@ def remove_directory(path):
 def concatenate_parts(file_name, directory, parts_list, remove=True):
     parent_file_path = os.path.join(directory, file_name)
     with open(parent_file_path, "wb") as output_file:
-        parts = [(p, re.search(r"_part(\d+)", p).groups(1)[0]) for p in parts_list]
+        parts = [(p, re.search(r"_part(\d+)", p).groups(1)[0])
+                 for p in parts_list]
         parts.sort(key=lambda x: int(x[1]))
         for part in parts:
             part_file_path = os.path.join(directory, part[0])
@@ -110,7 +114,7 @@ def run_pipeline(file_list,
     chunk_size = chunk_size*1024*1024  # convert to bytes
     # S3
     s3: botostubs.S3 = boto3.client('s3')
-    upload_dir="raw"
+    upload_dir = "raw"
     transfer_config = TransferConfig(multipart_chunksize=chunk_size)
 
     # 7zip
@@ -134,7 +138,8 @@ def run_pipeline(file_list,
     logger.info("Total file size is: ~%s MB", round(total_size/1024/1024))
     n_parts_dict = {file_name: math.ceil(file_size_dict[file_name]/chunk_size)
                     for file_name in file_size_dict}
-    logger.info("Number of parts to be created: %s", sum(n_parts_dict.values()))
+    logger.info("Number of parts to be created: %s",
+                sum(n_parts_dict.values()))
 
     # Download -> concatenate (if needed) -> zip -> upload -> remove
     for f in file_list:
@@ -157,21 +162,22 @@ def run_pipeline(file_list,
                     start = end + 1
                     part_number += 1
             file = concatenate_parts(file_name=f,
-                              directory=intermediate_local,
-                              parts_list=list(futures.values()),
-                              remove=True)
+                                     directory=intermediate_local,
+                                     parts_list=list(futures.values()),
+                                     remove=True)
         else:
-            file=download_file(source_name=f,
-                          destination_name=f,
-                          destination_dir=intermediate_local)
+            file = download_file(source_name=f,
+                                 destination_name=f,
+                                 destination_dir=intermediate_local)
 
         file_unzipped = unzip_file(zip_path=file,
-                                    unzip_path=os.path.join(intermediate_local, f.split(".7z")[0]),
-                                    remove=True)
+                                   unzip_path=os.path.join(
+                                       intermediate_local, f.split(".7z")[0]),
+                                   remove=True)
         upload_folder(s3_client=s3,
-                        in_path=file_unzipped,
-                        bucket=target_bucket,
-                        out_path=os.path.join(upload_dir, f.split(".7z")[0]),
-                        overwrite=overwrite,
-                        Config=transfer_config)
+                      in_path=file_unzipped,
+                      bucket=target_bucket,
+                      out_path=os.path.join(upload_dir, f.split(".7z")[0]),
+                      overwrite=overwrite,
+                      Config=transfer_config)
         remove_directory(file_unzipped)
