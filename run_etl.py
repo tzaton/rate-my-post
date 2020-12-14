@@ -46,12 +46,12 @@ if __name__ == "__main__":
                         format='%(asctime)s - [%(levelname)s] - %(name)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
-    for l in ["urllib3", "botocore", "s3transfer"]:
-        logging.getLogger(l).setLevel(logging.WARNING)
+    for log in ["urllib3", "botocore", "s3transfer"]:
+        logging.getLogger(log).setLevel(logging.WARNING)
 
     if args.dataset_file is not None:
-        file_list = [l for l in args.dataset_file.read().splitlines() if l and
-                     not l.startswith("#")]
+        file_list = [line for line in args.dataset_file.read().splitlines() if line and
+                     not line.startswith("#")]
     else:
         file_list = args.dataset_name
 

@@ -45,8 +45,7 @@ def upload_file(s3_client, path, bucket, key, overwrite, **kwargs):
                 "Object already exists: /%s/%s. Skipping because `overwrite`=False was specified", bucket, key)
             upload_flag = False
         except ClientError:
-            logger.info(
-                "Object already exists: /%s/%s. It will be overwritten because `overwrite`=True was specified", bucket, key)
+            pass
     if upload_flag is True:
         s3_client.upload_file(path,
                               Bucket=bucket,
