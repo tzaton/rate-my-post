@@ -10,13 +10,9 @@ if __name__ == "__main__":
                                         Files larger than `chunk-size` will be split into parts of size=`chunk-size`''',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         conflict_handler='resolve')
-    dataset_parser = argparser.add_mutually_exclusive_group(required=True)
-    dataset_parser.add_argument("--dataset-name",
-                                help="List of dataset names to upload (d1 d2...)",
-                                nargs="+")
-    dataset_parser.add_argument("--dataset-file",
-                                help="Name (full path) of the file containing dataset names to upload (each in new line)",
-                                type=argparse.FileType('r'))
+    argparser.add_argument("--dataset-name",
+                           help="List of dataset names to upload (d1 d2...)",
+                           nargs="+")
     argparser.add_argument("--local-dir",
                            help="Local directory to store files before upload",
                            required=True)
@@ -46,17 +42,9 @@ if __name__ == "__main__":
                         format='%(asctime)s - [%(levelname)s] - %(name)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
-    for log in ["urllib3", "botocore", "s3transfer"]:
-        logging.getLogger(log).setLevel(logging.WARNING)
-
-    if args.dataset_file is not None:
-        file_list = [line for line in args.dataset_file.read().splitlines() if line and
-                     not line.startswith("#")]
-    else:
-        file_list = args.dataset_name
 
     # Run ETL: download files from HTTP and upload to S3
-    run_pipeline(file_list=file_list,
+    run_pipeline(file_list=args.dataset_name,
                  intermediate_local=args.local_dir,
                  target_bucket=args.bucket,
                  chunk_size=args.chunk_size,

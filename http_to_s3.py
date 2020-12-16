@@ -2,16 +2,15 @@ import concurrent.futures
 import logging
 import math
 import os
-import shutil
 import re
+import shutil
 
 import boto3
 import botostubs
 import requests
-from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
+from botocore.exceptions import ClientError
 from py7zr import unpack_7zarchive
-
 
 logger = logging.getLogger(__name__)
 data_parent_url = os.environ["DATA_PARENT_URL"]
@@ -19,6 +18,7 @@ data_parent_url = os.environ["DATA_PARENT_URL"]
 
 def get_file_size(file_name):
     file_url = data_parent_url + file_name
+    logger.info("Getting file size: %s", file_url)
     with requests.head(file_url, allow_redirects=True) as r:
         r.raise_for_status()
         return int(r.headers["Content-Length"])
@@ -26,6 +26,7 @@ def get_file_size(file_name):
 
 def download_file(source_name, destination_name, destination_dir, **kwargs):
     file_url = data_parent_url + source_name
+    logger.info("Downloading: %s", file_url)
     file_location = os.path.join(destination_dir, destination_name)
 
     with requests.get(file_url, allow_redirects=True, stream=True, **kwargs) as r:
@@ -111,7 +112,9 @@ def run_pipeline(file_list,
                  chunk_size,
                  overwrite):
     chunk_size = chunk_size*1024*1024  # convert to bytes
-    # S3
+    # AWS
+    sts: botostubs.STS = boto3.client('sts')
+    sts.get_caller_identity()
     s3: botostubs.S3 = boto3.client('s3')
     upload_dir = "raw"
     transfer_config = TransferConfig(multipart_chunksize=chunk_size)
