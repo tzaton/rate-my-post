@@ -4,6 +4,7 @@ import math
 import os
 import re
 import shutil
+from pathlib import Path
 
 import boto3
 import botostubs
@@ -21,7 +22,15 @@ DATA_PARENT_URL = os.environ["DATA_PARENT_URL"]
 MAX_WORKERS = 10
 
 
-def get_file_size(file_name):
+def get_file_size(path):
+    return Path(path).stat().st_size
+
+
+def get_dir_size(path):
+    return sum([get_file_size(p) for p in Path(path).rglob("*")])
+
+
+def get_url_size(file_name):
     file_url = DATA_PARENT_URL + file_name
     logger.info("Getting file size: %s", file_url)
     with requests.head(file_url, allow_redirects=True) as r:
@@ -47,7 +56,8 @@ def upload_file(s3_client, path, bucket, key, **kwargs):
                           Bucket=bucket,
                           Key=key,
                           **kwargs)
-    logger.info("File: %s uploaded to: /%s/%s", path, bucket, key)
+    logger.info("File: %s uploaded to: %s/%s (%s MB)",
+                path, bucket, key, round(get_file_size(path)/1024/1024, 1))
 
 
 def check_dir_on_s3(s3_client, bucket, dir):
@@ -55,11 +65,11 @@ def check_dir_on_s3(s3_client, bucket, dir):
     try:
         s3_client.list_objects(Bucket=bucket, Prefix=dir, MaxKeys=1)
         logger.info(
-            "Object exists on S3: /%s/%s", bucket, dir)
+            "Object exists on S3: %s/%s", bucket, dir)
         return True
     except ClientError:
         logger.info(
-            "Object doesn't exist on S3: /%s/%s", bucket, dir)
+            "Object doesn't exist on S3: %s/%s", bucket, dir)
         return False
 
 
@@ -106,8 +116,11 @@ def concatenate_parts(file_name, directory, parts_list, remove=True):
 
 
 def unzip_file(zip_path, unzip_path, remove=True):
+    zip_size = round(get_file_size(zip_path)/1024/1024, 1)
     shutil.unpack_archive(zip_path, unzip_path)
-    logger.info("File: %s unzipped to: %s", zip_path, unzip_path)
+    unzip_size = round(get_dir_size(unzip_path)/1024/1024, 1)
+    logger.info("File: %s unzipped to: %s (%s MB -> %s MB)",
+                zip_path, unzip_path, zip_size, unzip_size)
     if remove is True:
         remove_file(zip_path)
     return unzip_path
@@ -149,18 +162,19 @@ def run_pipeline(file_list,
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = {}
         for file_name in file_list:
-            size_check = executor.submit(get_file_size, file_name)
+            size_check = executor.submit(get_url_size, file_name)
             futures[size_check] = file_name
         for future in concurrent.futures.as_completed(futures):
             file_size_dict[futures[future]] = future.result()
             total_size += future.result()
-    logger.info("Total file size is: ~%s MB", round(total_size/1024/1024))
+    logger.info("Total file size is: %s MB", round(total_size/1024/1024, 1))
     n_parts_dict = {file_name: math.ceil(file_size_dict[file_name]/chunk_size)
                     for file_name in file_size_dict}
     logger.info("Number of parts to be created: %s",
                 sum(n_parts_dict.values()))
 
     # Download -> concatenate (if needed) -> zip -> upload -> remove
+    Path(intermediate_local).mkdir(parents=True, exist_ok=True)
     for f in file_list:
         size = file_size_dict[f]
         if size > chunk_size:
