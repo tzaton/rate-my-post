@@ -1,13 +1,13 @@
 import argparse
 import logging
+import sys
 
+import watchtower
 from http_to_s3 import run_pipeline
 
 if __name__ == "__main__":
     # Parse arguments
-    argparser = argparse.ArgumentParser(description='''Download data from HTTP to S3 bucket.
-                                        Files will be saved in `raw` directory.
-                                        Files larger than `chunk-size` will be split into parts of size=`chunk-size`''',
+    argparser = argparse.ArgumentParser(description='''Download data from HTTP to S3 bucket.''',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         conflict_handler='resolve')
     argparser.add_argument("--dataset-name",
@@ -16,14 +16,17 @@ if __name__ == "__main__":
     argparser.add_argument("--local-dir",
                            help="Local directory to store files before upload",
                            required=True)
-    argparser.add_argument("--bucket",
+    argparser.add_argument("--s3-bucket",
                            help="Destination S3 bucket",
+                           required=True)
+    argparser.add_argument("--s3-dir",
+                           help="directory on S3 bucket",
                            required=True)
     argparser.add_argument("--chunk-size",
                            help="Chunk size (in megabytes) to use for splitting the files = max file size for transfer (the same for download and upload)",
                            required=False,
                            type=int,
-                           default=50)
+                           default=250)
     argparser.add_argument("--logging-level",
                            help="Logging level",
                            required=False,
@@ -42,10 +45,18 @@ if __name__ == "__main__":
                         format='%(asctime)s - [%(levelname)s] - %(name)s - %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger(__name__)
+    logger.addHandler(watchtower.CloudWatchLogHandler(
+        stream_name="http-to-s3"))
 
     # Run ETL: download files from HTTP and upload to S3
-    run_pipeline(file_list=args.dataset_name,
-                 intermediate_local=args.local_dir,
-                 target_bucket=args.bucket,
-                 chunk_size=args.chunk_size,
-                 overwrite=args.overwrite)
+    try:
+        run_pipeline(file_list=args.dataset_name,
+                     intermediate_local=args.local_dir,
+                     target_bucket=args.s3_bucket,
+                     target_dir=args.s3_dir,
+                     chunk_size=args.chunk_size,
+                     overwrite=args.overwrite)
+        logger.info("Finished successfully")
+    except Exception as e:
+        logger.exception(e)
+        sys.exit(1)
