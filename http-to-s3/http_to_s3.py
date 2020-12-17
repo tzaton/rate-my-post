@@ -10,6 +10,7 @@ import boto3
 import botostubs
 import requests
 import watchtower
+import stringcase
 from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
 from py7zr import unpack_7zarchive
@@ -51,42 +52,47 @@ def download_file(source_name, destination_name, destination_dir, **kwargs):
     return file_location
 
 
-def upload_file(s3_client, path, bucket, key, **kwargs):
-    s3_client.upload_file(path,
-                          Bucket=bucket,
-                          Key=key,
-                          **kwargs)
-    logger.info("File: %s uploaded to: %s/%s (%s MB)",
-                path, bucket, key, round(get_file_size(path)/1024/1024, 1))
+def upload_file(s3_client, path, bucket, key, overwrite, **kwargs):
+    upload_flag = True
+    if overwrite is False:
+        if check_file_on_s3(s3_client, bucket, key) is True:
+            logger.info(
+                "Skipping: %s because `overwrite` = False was specified", key)
+            upload_flag = False
+    if upload_flag is True:
+        s3_client.upload_file(path,
+                              Bucket=bucket,
+                              Key=key,
+                              **kwargs)
+        logger.info("File: %s uploaded to: %s/%s (%s MB)",
+                    path, bucket, key, round(get_file_size(path)/1024/1024, 1))
 
 
-def check_dir_on_s3(s3_client, bucket, dir):
-    dir = dir.rstrip("/")+"/"
+def check_file_on_s3(s3_client, bucket, key):
     try:
-        s3_client.list_objects(Bucket=bucket, Prefix=dir, MaxKeys=1)
+        s3_client.head_object(Bucket=bucket, Key=key)
         logger.info(
-            "Object exists on S3: %s/%s", bucket, dir)
+            "Object exists on S3: %s/%s", bucket, key)
         return True
     except ClientError:
         logger.info(
-            "Object doesn't exist on S3: %s/%s", bucket, dir)
+            "Object doesn't exist on S3: %s/%s", bucket, key)
         return False
 
 
-def upload_folder(s3_client, in_path, bucket, out_path, **kwargs):
+def upload_folder(s3_client, in_path, bucket, out_dir, overwrite, **kwargs):
     logger.info("Uploading directory: %s", in_path)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        for root, _, files in os.walk(in_path):
-            for f in files:
-                local_path = os.path.join(root, f)
-                relative_path = os.path.relpath(local_path, in_path)
-                s3_path = os.path.join(out_path, relative_path)
-                executor.submit(upload_file,
-                                s3_client=s3_client,
-                                path=local_path,
-                                bucket=bucket,
-                                key=s3_path,
-                                **kwargs)
+    for f in Path(in_path).glob("*"):
+        s3_folder = stringcase.snakecase(os.path.splitext(f.name)[0])
+        s3_filename = f.parent.name.lower().replace(
+            ".", "-") + os.path.splitext(f.name)[1]
+        s3_path = os.path.join(out_dir, s3_folder, s3_filename)
+        upload_file(s3_client=s3_client,
+                    path=str(f),
+                    bucket=bucket,
+                    key=s3_path,
+                    overwrite=overwrite,
+                    **kwargs)
 
 
 def remove_file(path):
@@ -141,16 +147,6 @@ def run_pipeline(file_list,
 
     # 7zip
     shutil.register_unpack_format('7zip', ['.7z'], unpack_7zarchive)
-
-    # Check if files already exist on S3
-    if overwrite is False:
-        to_skip = set()
-        for file_name in file_list:
-            if check_dir_on_s3(s3, target_bucket, os.path.join(target_dir, file_name.split(".7z")[0])):
-                to_skip.add(file_name)
-                logger.info(
-                    "Skipping %s because it already exists on S3 and `overwrite`=False was specified", file_name)
-        file_list = list(set(file_list).difference(to_skip))
 
     # Calculate file size
     total_size = 0
@@ -210,6 +206,7 @@ def run_pipeline(file_list,
         upload_folder(s3_client=s3,
                       in_path=file_unzipped,
                       bucket=target_bucket,
-                      out_path=os.path.join(target_dir, f.split(".7z")[0]),
+                      out_dir=target_dir,
+                      overwrite=overwrite,
                       Config=transfer_config)
         remove_directory(file_unzipped)
