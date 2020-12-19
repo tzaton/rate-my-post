@@ -16,7 +16,7 @@ with open("setup/config.json", "r") as cfg:
     ACCOUNT_ID = json.load(cfg)["ACCOUNT_ID"]
 image = f"{ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/{container_name}"
 
-role = "s3fullecs"
+role = 'ecs-run-task-s3'
 
 
 if __name__ == "__main__":
