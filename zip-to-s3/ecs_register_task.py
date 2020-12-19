@@ -32,8 +32,8 @@ if __name__ == "__main__":
         requiresCompatibilities=[
             'FARGATE',
         ],
-        cpu='0.5vCPU',
-        memory='1GB',
+        cpu='2vCPU',
+        memory='4GB',
         containerDefinitions=[
             {
                 'name': container_name,
