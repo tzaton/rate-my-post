@@ -18,15 +18,17 @@ if __name__ == "__main__":
 
     ecs: botostubs.ECS = boto3.client('ecs')
 
+    # Get VPC subnets
+    ec2 = boto3.client('ec2')
+    subnets = [sn['SubnetId'] for sn in ec2.describe_subnets()['Subnets']]
+
     response = ecs.run_task(
         taskDefinition=task_family,
         cluster=cluster_name,
         launchType='FARGATE',
         networkConfiguration={
             'awsvpcConfiguration': {
-                'subnets': [
-                    'subnet-bbe95be4',
-                ],
+                'subnets': subnets,
                 'assignPublicIp': 'ENABLED'}
         },
         overrides={

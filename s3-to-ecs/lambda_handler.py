@@ -1,3 +1,4 @@
+import botostubs
 from pprint import pprint
 
 import boto3
@@ -13,6 +14,11 @@ def lambda_handler(event, context):
     cluster_name = "rate-my-post"
     task_family = "unzip-on-s3"
     ecs = boto3.client('ecs')
+    target_dir = 'unzip'
+
+    # Get VPC subnets
+    ec2 = boto3.client('ec2')
+    subnets = [sn['SubnetId'] for sn in ec2.describe_subnets()['Subnets']]
 
     print(f"Starting ECS task: {task_family}")
     response = ecs.run_task(
@@ -21,9 +27,7 @@ def lambda_handler(event, context):
         launchType='FARGATE',
         networkConfiguration={
             'awsvpcConfiguration': {
-                'subnets': [
-                    'subnet-bbe95be4',
-                ],
+                'subnets': subnets,
                 'assignPublicIp': 'ENABLED'}
         },
         overrides={
@@ -38,7 +42,7 @@ def lambda_handler(event, context):
                         '--s3-bucket',
                         bucket_name,
                         '--s3-dir',
-                        'unzip'
+                        target_dir
                     ],
                 }
             ]
