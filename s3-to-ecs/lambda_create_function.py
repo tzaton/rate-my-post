@@ -1,3 +1,4 @@
+import os
 from pprint import pprint
 
 import boto3
@@ -5,11 +6,13 @@ import botostubs
 
 
 if __name__ == "__main__":
-    bucket_name = 'projekt-big-data-test'
-    lambda_path = "lambda/s3-to-ecs/lambda_handler.py"
-    function_name = 's3-to-ecs'
-    role_name = 'lambda-get-s3-run-ecs'
-    trigger_prefix = 'zip/'
+    bucket_name = os.environ["BUCKET_NAME"]
+    lambda_path = os.path.join(os.environ["LAMBDA_DIR"],
+                               os.environ["TASK_TRIGGER_UNZIP"],
+                               "lambda_handler.py")
+    function_name = os.environ["TASK_TRIGGER_UNZIP"]
+    role_name = os.environ['TASK_TRIGGER_UNZIP_ROLE']
+    trigger_prefix = os.environ["ZIP_DIR"]+"/"
 
     aws_lambda: botostubs.Lambda = boto3.client('lambda')
     iam: botostubs.IAM = boto3.client('iam')
@@ -28,6 +31,13 @@ if __name__ == "__main__":
         Timeout=10,
         MemorySize=128,
         Publish=True,
+        Environment={
+            'Variables': {
+                'CLUSTER_NAME': os.environ['CLUSTER_NAME'],
+                'TASK_UNZIP': os.environ['TASK_UNZIP'],
+                'UNZIP_DIR': os.environ['UNZIP_DIR']
+            }
+        },
     )
     pprint(response)
 

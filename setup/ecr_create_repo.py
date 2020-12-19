@@ -1,10 +1,10 @@
-import sys
+import os
 from pprint import pprint
 
 import boto3
 import botostubs
 
-repo_name = sys.argv[1]
+repo_name = os.environ["REPO_NAME"]
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import json
+import os
 from pprint import pprint
 
 import boto3
@@ -10,7 +11,7 @@ if __name__ == "__main__":
     client: botostubs.IAM = boto3.client('iam')
 
     # ECS task - access S3
-    role_name = 'ecs-run-task-s3'
+    role_name = os.environ['ECS_S3_ROLE']
     try:
         ecs_task = client.create_role(
             RoleName=role_name,
@@ -39,7 +40,7 @@ if __name__ == "__main__":
         print(e)
 
     # Lambda - read S3 and run ECS
-    role_name = 'lambda-get-s3-run-ecs'
+    role_name = os.environ['TASK_TRIGGER_UNZIP_ROLE']
     try:
         lambda_ecs_s3 = client.create_role(
             RoleName=role_name,

@@ -1,10 +1,10 @@
-import sys
+import os
 from pprint import pprint
 
 import boto3
 import botostubs
 
-cluster_name = sys.argv[1]
+cluster_name = os.environ["CLUSTER_NAME"]
 
 
 if __name__ == "__main__":

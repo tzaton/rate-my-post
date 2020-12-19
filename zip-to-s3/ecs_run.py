@@ -1,11 +1,12 @@
+import os
 from pprint import pprint
 
 import boto3
 import botostubs
 from src.arg_parser import get_parser
 
-task_family = "zip-to-s3"
-cluster_name = "rate-my-post"
+task_family = os.environ['TASK_DOWNLOAD']
+cluster_name = os.environ['CLUSTER_NAME']
 
 
 if __name__ == "__main__":

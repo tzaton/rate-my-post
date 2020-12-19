@@ -1,4 +1,4 @@
-import json
+import os
 import sys
 from pprint import pprint
 from pathlib import Path
@@ -9,14 +9,13 @@ import botostubs
 sys.path.insert(0, str(Path(__file__).parents[1]/"setup"))
 from create_log_group import create_log_group
 
-task_family = "unzip-on-s3"
-container_name = "unzip-on-s3"
+task_family = os.environ['TASK_UNZIP']
+container_name = os.environ['TASK_UNZIP']
 
-with open("setup/config.json", "r") as cfg:
-    ACCOUNT_ID = json.load(cfg)["ACCOUNT_ID"]
+ACCOUNT_ID = os.environ["ACCOUNT_ID"]
 image = f"{ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/{container_name}"
 
-role = 'ecs-run-task-s3'
+role = os.environ['ECS_S3_ROLE']
 
 
 if __name__ == "__main__":

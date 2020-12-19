@@ -1,11 +1,11 @@
-import sys
+import os
 from pprint import pprint
 
 import boto3
 import botostubs
 
 
-bucket_name = sys.argv[1]
+bucket_name = os.environ['BUCKET_NAME']
 
 if __name__ == "__main__":
     s3: botostubs.S3 = boto3.client('s3')

@@ -1,4 +1,4 @@
-import botostubs
+import os
 from pprint import pprint
 
 import boto3
@@ -11,10 +11,10 @@ def lambda_handler(event, context):
     print(f"Found S3 file: {bucket_name}/{file_name}")
 
     # Run ECS task
-    cluster_name = "rate-my-post"
-    task_family = "unzip-on-s3"
     ecs = boto3.client('ecs')
-    target_dir = 'unzip'
+    cluster_name = os.environ['CLUSTER_NAME']
+    task_family = os.environ['TASK_UNZIP']
+    target_dir = os.environ['UNZIP_DIR']
 
     # Get VPC subnets
     ec2 = boto3.client('ec2')

@@ -1,12 +1,9 @@
 #!/bin/bash
 
-export LAMBDA_NAME=s3-to-ecs
-export LAMBDA_FILE=lambda_handler.py
+export LAMBDA_NAME="$TASK_TRIGGER_UNZIP"
+export LAMBDA_KEY="$LAMBDA_DIR"/"$LAMBDA_NAME"/lambda_handler.py
 
-export BUCKET_NAME=projekt-big-data-test
-export LAMBDA_KEY=lambda/"$LAMBDA_NAME"/"$LAMBDA_FILE"
-
-zip -j "$LAMBDA_NAME".zip "$LAMBDA_NAME"/"$LAMBDA_FILE"
+zip -j "$LAMBDA_NAME".zip "$LAMBDA_NAME"/lambda_handler.py
 
 aws s3api put-object \
 --bucket "$BUCKET_NAME" \
