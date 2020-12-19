@@ -76,21 +76,14 @@ def get_file_size(path):
     return Path(path).stat().st_size
 
 
-def upload_file(s3_client, path, bucket, key, overwrite, **kwargs):
-    upload_flag = True
-    if overwrite is False:
-        if check_file_on_s3(s3_client, bucket, key) is True:
-            logger.info(
-                "Skipping: %s because `overwrite` = False was specified", key)
-            upload_flag = False
-    if upload_flag is True:
-        logger.info("Uploading: %s to: %s/%s", path, bucket, key)
-        s3_client.upload_file(path,
-                              Bucket=bucket,
-                              Key=key,
-                              **kwargs)
-        logger.info("File: %s uploaded to: %s/%s (%s MB)",
-                    path, bucket, key, round(get_file_size(path)/1024/1024, 1))
+def upload_file(s3_client, path, bucket, key, **kwargs):
+    logger.info("Uploading: %s to: %s/%s", path, bucket, key)
+    s3_client.upload_file(path,
+                          Bucket=bucket,
+                          Key=key,
+                          **kwargs)
+    logger.info("File: %s uploaded to: %s/%s (%s MB)",
+                path, bucket, key, round(get_file_size(path)/1024/1024, 1))
 
 
 def run_pipeline(file_list,
@@ -130,6 +123,15 @@ def run_pipeline(file_list,
     # Download -> concatenate (if needed) -> upload -> remove
     Path(intermediate_local).mkdir(parents=True, exist_ok=True)
     for f in file_list:
+        s3_key = os.path.join(target_dir, f)
+        if overwrite is False:
+            if check_file_on_s3(s3_client=s3,
+                                bucket=target_bucket,
+                                key=s3_key) is True:
+                logger.info(
+                    "Skipping: %s because `overwrite` = False was specified", f)
+                continue
+
         size = file_size_dict[f]
         if size > chunk_size:
             n_parts = n_parts_dict[f]
@@ -159,7 +161,6 @@ def run_pipeline(file_list,
         upload_file(s3_client=s3,
                     path=file,
                     bucket=target_bucket,
-                    key=os.path.join(target_dir, f),
-                    overwrite=overwrite,
+                    key=s3_key,
                     Config=transfer_config)
         remove_file(file)
