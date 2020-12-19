@@ -10,6 +10,6 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Run job
-COPY http_to_s3.py run_etl.py /src/
+COPY zip-to-s3/src /src
 WORKDIR /src
-ENTRYPOINT ["python", "run_etl.py"]
+ENTRYPOINT ["python", "main.py"]

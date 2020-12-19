@@ -9,26 +9,13 @@ from pathlib import Path
 import boto3
 import botostubs
 import requests
-import watchtower
-import stringcase
 from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
-from py7zr import unpack_7zarchive
 
 logger = logging.getLogger(__name__)
-logger.addHandler(watchtower.CloudWatchLogHandler(
-    stream_name="http-to-s3"))
 
 DATA_PARENT_URL = os.environ["DATA_PARENT_URL"]
 MAX_WORKERS = 10
-
-
-def get_file_size(path):
-    return Path(path).stat().st_size
-
-
-def get_dir_size(path):
-    return sum([get_file_size(p) for p in Path(path).rglob("*")])
 
 
 def get_url_size(file_name):
@@ -52,22 +39,6 @@ def download_file(source_name, destination_name, destination_dir, **kwargs):
     return file_location
 
 
-def upload_file(s3_client, path, bucket, key, overwrite, **kwargs):
-    upload_flag = True
-    if overwrite is False:
-        if check_file_on_s3(s3_client, bucket, key) is True:
-            logger.info(
-                "Skipping: %s because `overwrite` = False was specified", key)
-            upload_flag = False
-    if upload_flag is True:
-        s3_client.upload_file(path,
-                              Bucket=bucket,
-                              Key=key,
-                              **kwargs)
-        logger.info("File: %s uploaded to: %s/%s (%s MB)",
-                    path, bucket, key, round(get_file_size(path)/1024/1024, 1))
-
-
 def check_file_on_s3(s3_client, bucket, key):
     try:
         s3_client.head_object(Bucket=bucket, Key=key)
@@ -80,28 +51,8 @@ def check_file_on_s3(s3_client, bucket, key):
         return False
 
 
-def upload_folder(s3_client, in_path, bucket, out_dir, overwrite, **kwargs):
-    logger.info("Uploading directory: %s", in_path)
-    for f in Path(in_path).glob("*"):
-        s3_folder = stringcase.snakecase(os.path.splitext(f.name)[0])
-        s3_filename = f.parent.name.lower().replace(
-            ".", "-") + os.path.splitext(f.name)[1]
-        s3_path = os.path.join(out_dir, s3_folder, s3_filename)
-        upload_file(s3_client=s3_client,
-                    path=str(f),
-                    bucket=bucket,
-                    key=s3_path,
-                    overwrite=overwrite,
-                    **kwargs)
-
-
 def remove_file(path):
     os.remove(path)
-    logger.info("Deleted: %s", path)
-
-
-def remove_directory(path):
-    shutil.rmtree(path)
     logger.info("Deleted: %s", path)
 
 
@@ -121,15 +72,18 @@ def concatenate_parts(file_name, directory, parts_list, remove=True):
     return parent_file_path
 
 
-def unzip_file(zip_path, unzip_path, remove=True):
-    zip_size = round(get_file_size(zip_path)/1024/1024, 1)
-    shutil.unpack_archive(zip_path, unzip_path)
-    unzip_size = round(get_dir_size(unzip_path)/1024/1024, 1)
-    logger.info("File: %s unzipped to: %s (%s MB -> %s MB)",
-                zip_path, unzip_path, zip_size, unzip_size)
-    if remove is True:
-        remove_file(zip_path)
-    return unzip_path
+def get_file_size(path):
+    return Path(path).stat().st_size
+
+
+def upload_file(s3_client, path, bucket, key, **kwargs):
+    logger.info("Uploading: %s to: %s/%s", path, bucket, key)
+    s3_client.upload_file(path,
+                          Bucket=bucket,
+                          Key=key,
+                          **kwargs)
+    logger.info("File: %s uploaded to: %s/%s (%s MB)",
+                path, bucket, key, round(get_file_size(path)/1024/1024, 1))
 
 
 def run_pipeline(file_list,
@@ -144,9 +98,6 @@ def run_pipeline(file_list,
     sts.get_caller_identity()  # check credentials
     s3: botostubs.S3 = boto3.client('s3')
     transfer_config = TransferConfig(multipart_chunksize=chunk_size)
-
-    # 7zip
-    shutil.register_unpack_format('7zip', ['.7z'], unpack_7zarchive)
 
     # Calculate file size
     total_size = 0
@@ -169,9 +120,18 @@ def run_pipeline(file_list,
     logger.info("Number of parts to be created: %s",
                 sum(n_parts_dict.values()))
 
-    # Download -> concatenate (if needed) -> zip -> upload -> remove
+    # Download -> concatenate (if needed) -> upload -> remove
     Path(intermediate_local).mkdir(parents=True, exist_ok=True)
     for f in file_list:
+        s3_key = os.path.join(target_dir, f)
+        if overwrite is False:
+            if check_file_on_s3(s3_client=s3,
+                                bucket=target_bucket,
+                                key=s3_key) is True:
+                logger.info(
+                    "Skipping: %s because `overwrite` = False was specified", f)
+                continue
+
         size = file_size_dict[f]
         if size > chunk_size:
             n_parts = n_parts_dict[f]
@@ -198,15 +158,9 @@ def run_pipeline(file_list,
             file = download_file(source_name=f,
                                  destination_name=f,
                                  destination_dir=intermediate_local)
-
-        file_unzipped = unzip_file(zip_path=file,
-                                   unzip_path=os.path.join(
-                                       intermediate_local, f.split(".7z")[0]),
-                                   remove=True)
-        upload_folder(s3_client=s3,
-                      in_path=file_unzipped,
-                      bucket=target_bucket,
-                      out_dir=target_dir,
-                      overwrite=overwrite,
-                      Config=transfer_config)
-        remove_directory(file_unzipped)
+        upload_file(s3_client=s3,
+                    path=file,
+                    bucket=target_bucket,
+                    key=s3_key,
+                    Config=transfer_config)
+        remove_file(file)
