@@ -271,4 +271,28 @@ users = spark.read.format('xml')\
 
 save_table(users, "users", ["creation_year"])
 
+
+# votes
+votes = spark.read.format('xml')\
+    .options(rowTag='row')\
+    .load(f's3://{bucket_name}/{input_dir}/votes')\
+    .withColumnRenamed("_BountyAmount", "bounty_amount")\
+    .withColumnRenamed("_CreationDate", "creation_date")\
+    .withColumnRenamed("_Id", "id")\
+    .withColumnRenamed("_PostId", "post_id")\
+    .withColumnRenamed("_UserId", "user_id")\
+    .withColumnRenamed("_VoteTypeId", "vote_type_id")\
+    .select("id",
+            "post_id",
+            "vote_type_id",
+            "user_id",
+            "creation_date",
+            "bounty_amount")\
+    .withColumn("creation_date",
+                f.to_timestamp(f.col("creation_date")))\
+    .withColumn("creation_year", f.year("creation_date"))
+
+save_table(votes, "votes", ["creation_year"])
+
+
 logger.info("Ending execution")

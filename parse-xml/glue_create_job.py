@@ -39,7 +39,7 @@ if __name__ == "__main__":
         },
         MaxRetries=0,
         GlueVersion='2.0',
-        NumberOfWorkers=10,
+        NumberOfWorkers=8,
         WorkerType='G.1X'
     )
 
