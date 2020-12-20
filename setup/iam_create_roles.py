@@ -3,9 +3,8 @@ import os
 from pprint import pprint
 
 import boto3
-from botocore.exceptions import ClientError
 import botostubs
-
+from botocore.exceptions import ClientError
 
 if __name__ == "__main__":
     client: botostubs.IAM = boto3.client('iam')
@@ -61,6 +60,36 @@ if __name__ == "__main__":
         policies = ['arn:aws:iam::aws:policy/CloudWatchLogsFullAccess',
                     'arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess',
                     'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess']
+        for p in policies:
+            response = client.attach_role_policy(
+                RoleName=role_name,
+                PolicyArn=p
+            )
+    except ClientError as e:
+        print(e)
+
+    # Glue - access S3
+    role_name = os.environ['GLUE_S3_ROLE']
+    try:
+        glue_s3 = client.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps({
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "glue.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                    }
+                ]
+            })
+        )
+        pprint(glue_s3)
+        policies = ['arn:aws:iam::aws:policy/AmazonS3FullAccess',
+                    'arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole',
+                    'arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole']
         for p in policies:
             response = client.attach_role_policy(
                 RoleName=role_name,
