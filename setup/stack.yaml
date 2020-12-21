@@ -46,25 +46,7 @@ Resources:
         RestrictPublicBuckets: true
       NotificationConfiguration:
         LambdaConfigurations:
-          - Event: s3:ObjectCreated:Put
-            Function: !GetAtt TriggerUnzipLambda.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: !Sub
-                      - ${path}/
-                      - path: !FindInMap [DirMap, zip, name]
-          - Event: s3:ObjectCreated:Post
-            Function: !GetAtt TriggerUnzipLambda.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: !Sub
-                      - ${path}/
-                      - path: !FindInMap [DirMap, zip, name]
-          - Event: s3:ObjectCreated:CompleteMultipartUpload
+          - Event: s3:ObjectCreated:*
             Function: !GetAtt TriggerUnzipLambda.Arn
             Filter:
               S3Key:
