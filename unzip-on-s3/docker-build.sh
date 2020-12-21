@@ -1,7 +1,12 @@
 #!/bin/bash
+set -e
 
-IMAGE_NAME="$TASK_UNZIP"
+ACCOUNT_ID=$(aws sts get-caller-identity | jq -r '.Account')
+REGION=$(aws configure get region)
+ECR="$ACCOUNT_ID".dkr.ecr."$REGION".amazonaws.com
+REPO_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.TaskMap.unzip.name')
+IMAGE_NAME="$ECR"/"$REPO_NAME"
 
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "$ACCOUNT_ID".dkr.ecr.us-east-1.amazonaws.com || exit
-docker build -f unzip-on-s3/Dockerfile -t "$ACCOUNT_ID".dkr.ecr.us-east-1.amazonaws.com/"$IMAGE_NAME":latest .
-docker push "$ACCOUNT_ID".dkr.ecr.us-east-1.amazonaws.com/"$IMAGE_NAME":latest
+aws ecr get-login-password | docker login --username AWS --password-stdin "$ECR"
+# docker build -f unzip-on-s3/Dockerfile -t "$IMAGE_NAME":latest .
+docker push "$IMAGE_NAME":latest

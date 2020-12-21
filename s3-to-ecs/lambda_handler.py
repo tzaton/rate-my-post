@@ -1,5 +1,4 @@
 import os
-from pprint import pprint
 
 import boto3
 
@@ -42,11 +41,10 @@ def lambda_handler(event, context):
                         '--s3-bucket',
                         bucket_name,
                         '--s3-dir',
-                        target_dir
+                        target_dir,
+                        '--overwrite'
                     ],
                 }
             ]
         }
     )
-
-    pprint(response)
