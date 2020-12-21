@@ -1,13 +1,15 @@
-import os
-from pprint import pprint
+from pathlib import Path
 
 import boto3
 import botostubs
+from cfn_tools import load_yaml
 from src.arg_parser import get_parser
 
-task_family = os.environ['TASK_DOWNLOAD']
-cluster_name = os.environ['CLUSTER_NAME']
 
+with open(Path(__file__).parents[1]/'setup/stack.yaml') as f:
+    env = load_yaml(f)
+task_family = env['Mappings']['TaskMap']['upload']['name']
+cluster_name = env['Parameters']['ProjectName']['Default']
 
 if __name__ == "__main__":
 
@@ -54,11 +56,10 @@ if __name__ == "__main__":
                         '--chunk-size',
                         args.chunk_size,
                         '--logging-level',
-                        args.logging_level
+                        args.logging_level,
+                        '--overwrite' if args.overwrite else '--no-overwrite'
                     ],
                 }
             ]
         }
     )
-
-    pprint(response)

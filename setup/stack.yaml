@@ -1,0 +1,606 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Setup infrastructure for rate-my-post project
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: rate-my-post-2
+  PreBucket:
+    Type: String
+    Default: rate-my-post-pre-2
+
+Mappings:
+  TaskMap:
+    upload:
+      name: zip-to-s3-2
+    triggerUnzip:
+      name: s3-to-ecs-2
+    unzip:
+      name: unzip-on-s3-2
+    parse:
+      name: parse-xml-2
+  DirMap:
+    unzip:
+      name: unzip
+    zip:
+      name: zip
+    data:
+      name: data
+    glue:
+      name: glue
+    jars:
+      name: jars
+    lambda:
+      name: lambda
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ProjectName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Function: !GetAtt TriggerUnzipLambda.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: !Sub
+                      - ${path}/
+                      - path: !FindInMap [DirMap, zip, name]
+          - Event: s3:ObjectCreated:Post
+            Function: !GetAtt TriggerUnzipLambda.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: !Sub
+                      - ${path}/
+                      - path: !FindInMap [DirMap, zip, name]
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
+            Function: !GetAtt TriggerUnzipLambda.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: !Sub
+                      - ${path}/
+                      - path: !FindInMap [DirMap, zip, name]
+    DependsOn:
+      - TriggerUnzipLambdaPermission
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      CapacityProviders:
+        - FARGATE
+      ClusterName: !Ref ProjectName
+
+  GlueDB:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Ref ProjectName
+
+  ECSRoleS3:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      RoleName: ecs-run-task-s3-2
+
+  LambdaRoleS3:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      RoleName: lambda-get-s3-run-ecs-2
+
+  GlueRoleS3:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - glue.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      RoleName: glue-run-job-s3-2
+
+  UploadTaskRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !FindInMap [TaskMap, upload, name]
+
+  UnzipTaskRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !FindInMap [TaskMap, unzip, name]
+
+  UploadTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        -
+          Name: !FindInMap [TaskMap, upload, name]
+          Image: !Sub
+            - ${AccountId}.dkr.ecr.${Region}.amazonaws.com/${RepoName}
+            - AccountId: !Ref AWS::AccountId
+              Region: !Ref AWS::Region
+              RepoName: !Ref UploadTaskRepo
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub
+                - /ecs/${TaskName}
+                - TaskName: !FindInMap [TaskMap, upload, name]
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+      Cpu: 2vCPU
+      ExecutionRoleArn: ecsTaskExecutionRole
+      Family: !FindInMap [TaskMap, upload, name]
+      Memory: 4GB
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: !GetAtt ECSRoleS3.Arn
+    DependsOn:
+      - ECSRoleS3
+      - UploadTaskRepo
+      - UploadTaskLogGroup
+
+  UnzipTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        -
+          Name: !FindInMap [TaskMap, unzip, name]
+          Image: !Sub
+            - ${AccountId}.dkr.ecr.${Region}.amazonaws.com/${RepoName}
+            - AccountId: !Ref AWS::AccountId
+              Region: !Ref AWS::Region
+              RepoName: !Ref UnzipTaskRepo
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub
+                - /ecs/${TaskName}
+                - TaskName: !FindInMap [TaskMap, unzip, name]
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+      Cpu: 1vCPU
+      ExecutionRoleArn: ecsTaskExecutionRole
+      Family: !FindInMap [TaskMap, unzip, name]
+      Memory: 2GB
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: !GetAtt ECSRoleS3.Arn
+    DependsOn:
+      - ECSRoleS3
+      - UnzipTaskRepo
+      - UploadTaskLogGroup
+
+  UploadTaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /ecs/${TaskName}
+        - TaskName: !FindInMap [TaskMap, upload, name]
+
+  UnzipTaskLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /ecs/${TaskName}
+        - TaskName: !FindInMap [TaskMap, unzip, name]
+
+  TriggerUnzipLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+         S3Bucket: !Ref PreBucket
+         S3Key: !Sub
+          - ${lambda_dir}/${task_name}/lambda_handler.py
+          - lambda_dir: !FindInMap [DirMap, lambda, name]
+            task_name: !FindInMap [TaskMap, triggerUnzip, name]
+      Description: Run ECS task on S3 file
+      Environment:
+        Variables:
+          CLUSTER_NAME: !Ref ECSCluster
+          TASK_UNZIP: !FindInMap [TaskMap, unzip, name]
+          UNZIP_DIR: !FindInMap [DirMap, unzip, name]
+      FunctionName: !FindInMap [TaskMap, triggerUnzip, name]
+      Handler: lambda_handler.lambda_handler
+      MemorySize: 128
+      PackageType: Zip
+      Role: !GetAtt LambdaRoleS3.Arn
+      Runtime: python3.7
+      Timeout: 10
+    DependsOn:
+      - LambdaRoleS3
+
+  TriggerUnzipLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt TriggerUnzipLambda.Arn
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${ProjectName}
+    DependsOn:
+      - TriggerUnzipLambda
+
+  ParseXMLJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Command:
+         Name: glueetl
+         PythonVersion: 3
+         ScriptLocation: !Sub
+          - s3://${bucket_name}/${glue_dir}/${job_name}/glue_parser.py
+          - bucket_name: !Ref PreBucket
+            glue_dir: !FindInMap [DirMap, glue, name]
+            job_name: !FindInMap [TaskMap, parse, name]
+      DefaultArguments:
+        --enable-continuous-cloudwatch-log: true
+        --enable-continuous-log-filter: true
+        --job-language: python
+        --extra-jars: !Sub
+          - s3://${bucket_name}/${jar_dir}/spark-xml_2.11-0.11.0.jar
+          - bucket_name: !Ref PreBucket
+            jar_dir: !FindInMap [DirMap, jars, name]
+        --bucket_name: !Ref ProjectName
+        --input_dir: !FindInMap [DirMap, unzip, name]
+        --output_dir: !FindInMap [DirMap, data, name]
+      Description: Parse XML data and save to parquet
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+      GlueVersion: 2.0
+      MaxRetries: 0
+      Name: !FindInMap [TaskMap, parse, name]
+      NumberOfWorkers: 8
+      Role: !GetAtt GlueRoleS3.Arn
+      WorkerType: G.1X
+    DependsOn:
+      - GlueRoleS3
+      - Bucket
+
+  BadgesCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: badges
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/badges
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+
+  CommentsCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: comments
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/comments
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  PostHistoryCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: post_history
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/post_history
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  PostLinksCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: post_links
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/post_links
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  PostsCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: posts
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/posts
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  TagsCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: tags
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/tags
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  UsersCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: users
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/users
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  VotesCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: !Ref ProjectName
+      Name: votes
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}/votes
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+    DependsOn:
+      - GlueRoleS3
+
+  ParseXMLWorkflow:
+    Type: AWS::Glue::Workflow
+    Properties:
+      Description: Parse XML and update metastore
+      Name: !FindInMap [TaskMap, parse, name]
+
+  ParseXMLStart:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - JobName: !FindInMap [TaskMap, parse, name]
+      Name: start
+      Type: ON_DEMAND
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  BadgesTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: badges
+      StartOnCreation: true
+      Name: badges
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  CommentsTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: comments
+      StartOnCreation: true
+      Name: comments
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  PostHistoryTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: post_history
+      StartOnCreation: true
+      Name: post_history
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  PostLinksTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: post_links
+      StartOnCreation: true
+      Name: post_links
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  PostsTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: posts
+      StartOnCreation: true
+      Name: posts
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  TagsTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: tags
+      StartOnCreation: true
+      Name: tags
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  UsersTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: users
+      StartOnCreation: true
+      Name: users
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
+
+  VotesTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - CrawlerName: votes
+      StartOnCreation: true
+      Name: votes
+      Predicate:
+        Conditions:
+          - JobName: !FindInMap [TaskMap, parse, name]
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !FindInMap [TaskMap, parse, name]
+    DependsOn:
+      - ParseXMLWorkflow
