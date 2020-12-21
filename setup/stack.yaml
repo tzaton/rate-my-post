@@ -88,7 +88,7 @@ Resources:
     Properties:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
-        Name: !Ref ProjectName
+        Name: default
 
   ECSRoleS3:
     Type: AWS::IAM::Role
@@ -297,152 +297,11 @@ Resources:
       Name: !FindInMap [TaskMap, parse, name]
       NumberOfWorkers: 8
       Role: !GetAtt GlueRoleS3.Arn
+      Timeout: 60
       WorkerType: G.1X
     DependsOn:
       - GlueRoleS3
       - Bucket
-
-  BadgesCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: badges
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/badges
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-
-  CommentsCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: comments
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/comments
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
-
-  PostHistoryCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: post_history
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/post_history
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
-
-  PostLinksCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: post_links
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/post_links
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
-
-  PostsCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: posts
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/posts
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
-
-  TagsCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: tags
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/tags
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
-
-  UsersCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: users
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/users
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
-
-  VotesCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: !Ref ProjectName
-      Name: votes
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-            - s3://${bucket_name}/${data_dir}/votes
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
-    DependsOn:
-      - GlueRoleS3
 
   ParseXMLWorkflow:
     Type: AWS::Glue::Workflow
@@ -457,150 +316,42 @@ Resources:
         - JobName: !FindInMap [TaskMap, parse, name]
       Name: start
       Type: ON_DEMAND
-      WorkflowName: !FindInMap [TaskMap, parse, name]
+      WorkflowName: !Ref ParseXMLWorkflow
     DependsOn:
       - ParseXMLWorkflow
 
-  BadgesTrigger:
+  ParseXMLCrawler:
+    Type: AWS::Glue::Crawler
+    Properties:
+      DatabaseName: default
+      Name: !FindInMap [TaskMap, parse, name]
+      Role: !GetAtt GlueRoleS3.Arn
+      SchemaChangePolicy:
+        UpdateBehavior: UPDATE_IN_DATABASE
+        DeleteBehavior: DELETE_FROM_DATABASE
+      Targets:
+        S3Targets:
+          - Path: !Sub
+            - s3://${bucket_name}/${data_dir}
+            - bucket_name: !Ref ProjectName
+              data_dir: !FindInMap [DirMap, data, name]
+
+  ParseXMLTrigger:
     Type: AWS::Glue::Trigger
     Properties:
       Actions:
-        - CrawlerName: badges
+        - CrawlerName: !Ref ParseXMLCrawler
       StartOnCreation: true
-      Name: badges
+      Name: trigger
       Predicate:
         Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
+          - JobName: !Ref ParseXMLJob
             LogicalOperator: EQUALS
             State: SUCCEEDED
         Logical: AND
       Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
+      WorkflowName: !Ref ParseXMLWorkflow
     DependsOn:
       - ParseXMLWorkflow
-
-  CommentsTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: comments
-      StartOnCreation: true
-      Name: comments
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
-
-  PostHistoryTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: post_history
-      StartOnCreation: true
-      Name: post_history
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
-
-  PostLinksTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: post_links
-      StartOnCreation: true
-      Name: post_links
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
-
-  PostsTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: posts
-      StartOnCreation: true
-      Name: posts
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
-
-  TagsTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: tags
-      StartOnCreation: true
-      Name: tags
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
-
-  UsersTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: users
-      StartOnCreation: true
-      Name: users
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
-
-  VotesTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: votes
-      StartOnCreation: true
-      Name: votes
-      Predicate:
-        Conditions:
-          - JobName: !FindInMap [TaskMap, parse, name]
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !FindInMap [TaskMap, parse, name]
-    DependsOn:
-      - ParseXMLWorkflow
+      - ParseXMLCrawler
+      - ParseXMLJob
