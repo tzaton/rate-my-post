@@ -7,7 +7,6 @@ import shutil
 from pathlib import Path
 
 import boto3
-import botostubs
 import requests
 from boto3.s3.transfer import TransferConfig
 from botocore.exceptions import ClientError
@@ -94,9 +93,9 @@ def run_pipeline(file_list,
                  overwrite):
     chunk_size = chunk_size*1024*1024  # convert to bytes
     # AWS
-    sts: botostubs.STS = boto3.client('sts')
+    sts = boto3.client('sts')
     sts.get_caller_identity()  # check credentials
-    s3: botostubs.S3 = boto3.client('s3')
+    s3 = boto3.client('s3')
     transfer_config = TransferConfig(multipart_chunksize=chunk_size)
 
     # Calculate file size

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import boto3
-import botostubs
 from cfn_tools import load_yaml
 from src.arg_parser import get_parser
 
@@ -19,7 +18,7 @@ if __name__ == "__main__":
                            required=True)
     args = argparser.parse_args()
 
-    ecs: botostubs.ECS = boto3.client('ecs')
+    ecs = boto3.client('ecs')
 
     # Get VPC subnets
     ec2 = boto3.client('ec2')
