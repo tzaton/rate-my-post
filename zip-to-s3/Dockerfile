@@ -1,5 +1,5 @@
 # Setup python environment
-FROM python:3.7.6
+FROM python:3.7-slim
 ENV VIRTUAL_ENV=/opt/venv
 RUN pip install virtualenv
 RUN virtualenv $VIRTUAL_ENV
