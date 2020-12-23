@@ -14,7 +14,6 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger(__name__)
 
 DATA_PARENT_URL = os.environ["DATA_PARENT_URL"]
-MAX_WORKERS = 10
 
 
 def get_url_size(file_name):
@@ -89,77 +88,73 @@ def run_pipeline(file_list,
                  intermediate_local,
                  target_bucket,
                  target_dir,
-                 chunk_size,
+                 n_parts,
                  overwrite):
-    chunk_size = chunk_size*1024*1024  # convert to bytes
     # AWS
     sts = boto3.client('sts')
     sts.get_caller_identity()  # check credentials
     s3 = boto3.client('s3')
-    transfer_config = TransferConfig(multipart_chunksize=chunk_size)
+    transfer_config = TransferConfig(use_threads=True)
 
+    logger.info("Starting download of %s files", len(file_list))
     # Calculate file size
+    # Skip exisiting files if specified
     total_size = 0
     file_size_dict = dict()
-    n_files = len(file_list)
-
     logger.info("Calculating total file size...")
-    logger.info("Number of files: %s", n_files)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {}
-        for file_name in file_list:
-            size_check = executor.submit(get_url_size, file_name)
-            futures[size_check] = file_name
-        for future in concurrent.futures.as_completed(futures):
-            file_size_dict[futures[future]] = future.result()
-            total_size += future.result()
-    logger.info("Total file size is: %s MB", round(total_size/1024/1024, 1))
-    n_parts_dict = {file_name: math.ceil(file_size_dict[file_name]/chunk_size)
-                    for file_name in file_size_dict}
-    logger.info("Number of parts to be created: %s",
-                sum(n_parts_dict.values()))
-
-    # Download -> concatenate (if needed) -> upload -> remove
-    Path(intermediate_local).mkdir(parents=True, exist_ok=True)
-    for f in file_list:
-        s3_key = os.path.join(target_dir, f)
+    for file_name in file_list:
+        s3_key = os.path.join(target_dir, file_name)
         if overwrite is False:
             if check_file_on_s3(s3_client=s3,
                                 bucket=target_bucket,
                                 key=s3_key) is True:
                 logger.info(
-                    "Skipping: %s because `overwrite` = False was specified", f)
+                    "Skipping: %s because `overwrite` = False was specified", file_name)
                 continue
+        size_check = get_url_size(file_name)
+        file_size_dict[file_name] = size_check
+        total_size += size_check
 
+    n_files = len(file_size_dict)
+    logger.info("Number of files to be downloaded: %s", n_files)
+    if n_files == 0:
+        logger.info("No files to process. Ending execution.")
+        return
+    logger.info("Total file size is: %s MB", round(total_size/1024/1024, 1))
+    logger.info("Number of parts to be created: %s",
+                n_files * n_parts)
+
+    # Download -> concatenate (if needed) -> upload -> remove
+    Path(intermediate_local).mkdir(parents=True, exist_ok=True)
+
+    for f in file_size_dict:
         size = file_size_dict[f]
-        if size > chunk_size:
-            n_parts = n_parts_dict[f]
-            start = 0
-            part_number = 1
-            with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                futures = {}
-                while start <= size:
-                    end = min(start + chunk_size, size)
-                    part_file_name = f"{f.split('.7z')[0]}_part{part_number}of{n_parts}.7z"
-                    part_download = executor.submit(download_file,
-                                                    source_name=f,
-                                                    destination_name=part_file_name,
-                                                    destination_dir=intermediate_local,
-                                                    headers={"Range": f"bytes={start}-{end}"})
-                    futures[part_download] = part_file_name
-                    start = end + 1
-                    part_number += 1
-            file = concatenate_parts(file_name=f,
-                                     directory=intermediate_local,
-                                     parts_list=list(futures.values()),
-                                     remove=True)
-        else:
-            file = download_file(source_name=f,
-                                 destination_name=f,
-                                 destination_dir=intermediate_local)
+        start = 0
+        part_size = int(size / n_parts)
+        logger.info("%s: file size ~ %s MB, part size ~ %s MB",
+                    f,
+                    round(size/1024/1024, 1),
+                    round((part_size)/1024/1024, 1))
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {}
+            for i in range(1, n_parts+1):
+                end = min(start + part_size, size)
+                part_file_name = f"{f.split('.7z')[0]}_part{i}of{n_parts}.7z"
+                part_download = executor.submit(download_file,
+                                                source_name=f,
+                                                destination_name=part_file_name,
+                                                destination_dir=intermediate_local,
+                                                headers={"Range": f"bytes={start}-{end}"})
+                futures[part_download] = part_file_name
+                start = end + 1
+        file = concatenate_parts(file_name=f,
+                                 directory=intermediate_local,
+                                 parts_list=list(futures.values()),
+                                 remove=True)
         upload_file(s3_client=s3,
                     path=file,
                     bucket=target_bucket,
-                    key=s3_key,
+                    key=os.path.join(target_dir, f),
                     Config=transfer_config)
         remove_file(file)

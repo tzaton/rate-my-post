@@ -52,8 +52,8 @@ if __name__ == "__main__":
                         args.s3_bucket,
                         '--s3-dir',
                         args.s3_dir,
-                        '--chunk-size',
-                        args.chunk_size,
+                        '-n',
+                        args.n,
                         '--logging-level',
                         args.logging_level,
                         '--overwrite' if args.overwrite else '--no-overwrite'

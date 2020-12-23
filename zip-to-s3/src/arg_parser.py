@@ -19,10 +19,10 @@ def get_parser():
     argparser.add_argument("--s3-dir",
                            help="directory on S3 bucket",
                            required=True)
-    argparser.add_argument("--chunk-size",
-                           help="Chunk size (in megabytes) to use for splitting the files = max file size for transfer (the same for download and upload)",
+    argparser.add_argument("-n",
+                           help="Number of parts to split the file for download",
                            required=False,
-                           default="250")
+                           default="8")
     argparser.add_argument("--logging-level",
                            help="Logging level",
                            required=False,

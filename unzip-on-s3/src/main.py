@@ -21,7 +21,6 @@ if __name__ == "__main__":
                      local=args.local_dir,
                      bucket=args.s3_bucket,
                      target_dir=args.s3_dir,
-                     chunk_size=int(args.chunk_size),
                      overwrite=args.overwrite)
         logger.info("Finished successfully")
     except Exception as e:

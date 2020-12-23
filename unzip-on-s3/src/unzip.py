@@ -100,14 +100,12 @@ def run_pipeline(file_name,
                  local,
                  bucket,
                  target_dir,
-                 chunk_size,
                  overwrite):
-    chunk_size = chunk_size*1024*1024  # convert to bytes
     # AWS
     sts = boto3.client('sts')
     sts.get_caller_identity()  # check credentials
     s3 = boto3.client('s3')
-    transfer_config = TransferConfig(multipart_chunksize=chunk_size)
+    transfer_config = TransferConfig(use_threads=True)
     # 7zip
     shutil.register_unpack_format('7zip', ['.7z'], unpack_7zarchive)
 
