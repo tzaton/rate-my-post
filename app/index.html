@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Rate My Post</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+</head>
+
+<body class="bg-white">
+    <main role="main" class="container pt-3">
+        <div class="container">
+            <h1>Rate My Post</h1>
+            <p class="lead">Test your Stack Exchange post to see how likely your question would be answered!</p>
+            <div class="container pt-3">
+                <form class="needs-validation" novalidate>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="forumName" class="font-weight-bold">Forum name</label>
+                            <select id="forumName" class="form-control" required>
+                                <option value="" selected>Choose...</option>
+                                <option>android.stackexchange.com</option>
+                                <option>askubuntu.com</option>
+                                <option>cs.stackexchange.com</option>
+                                <option>datascience.stackexchange.com</option>
+                                <option>dba.stackexchange.com</option>
+                                <option>devops.stackexchange.com</option>
+                                <option>gamedev.stackexchange.com</option>
+                                <option>raspberrypi.stackexchange.com</option>
+                                <option>softwareengineering.stackexchange.com</option>
+                                <option>unix.stackexchange.com</option>
+                            </select>
+                            <small id="forumNameHelp" class="text-muted">
+                                Stack Exchange community name (full address). Choose one.
+                            </small>
+                            <div class="invalid-feedback">
+                                Forum name is required.
+                            </div>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="userName" class="font-weight-bold">Your username</label>
+                            <input type="text" class="form-control" id="userName" required>
+                            <small id="userNameHelp" class="text-muted">
+                                Username as displayed on Stack Exchange.
+                            </small>
+                            <div class="invalid-feedback">
+                                Username is required.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="postTitle" class="font-weight-bold">Post title</label>
+                            <input type="text" class="form-control" id="postTitle" required>
+                            <small id="postTitleHelp" class="text-muted">
+                                Title of the post as you would specify it on Stack Exchange.
+                            </small>
+                            <div class="invalid-feedback">
+                                Post title is required.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="postBody" class="font-weight-bold">Post body</label>
+                            <textarea class="form-control" rows="5" id="postBody" required></textarea>
+                            <small id="postBodyHelp" class="text-muted">
+                                Full post body as you would specify it on Stack Exchange.
+                            </small>
+                            <div class="invalid-feedback">
+                                Post body is required.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="postTags" class="font-weight-bold">Tags</label>
+                            <input type="text" class="form-control" id="postTags" placeholder="tag1, tag2, ...">
+                            <small id="postTitleHelp" class="text-muted">
+                                List of tags to be added to the post, comma-separated
+                            </small>
+                        </div>
+                    </div>
+                    <div class="text-center"><button type="submit" class="btn btn-primary">Submit</button></div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <div>
+        <footer class="pt-5 text-muted text-center text-small">
+            <p class="mb-1">&copy; Tomasz Zatoń, 2020</p>
+        </footer>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+    <script>
+        // Validate before submit
+        (function () {
+            'use strict';
+
+            window.addEventListener('load', function () {
+                var forms = document.getElementsByClassName('needs-validation');
+
+                var validation = Array.prototype.filter.call(forms, function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+    </script>
+</body>
+
+</html>

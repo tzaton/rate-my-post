@@ -9,6 +9,9 @@ Parameters:
   PreBucket:
     Type: String
     Default: rate-my-post-pre-2
+  AppBucket:
+    Type: String
+    Default: rate-my-post-app
 
 Mappings:
   TaskMap:
