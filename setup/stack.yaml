@@ -23,6 +23,8 @@ Mappings:
       name: unzip-on-s3-2
     parse:
       name: parse-xml-2
+    triggerPredict:
+      name: run-prediction-2
   DirMap:
     unzip:
       name: unzip
@@ -84,7 +86,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-              - ecs-tasks.amazonaws.com
+                - ecs-tasks.amazonaws.com
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
@@ -100,7 +102,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-              - lambda.amazonaws.com
+                - lambda.amazonaws.com
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
@@ -118,7 +120,7 @@ Resources:
           - Effect: Allow
             Principal:
               Service:
-              - glue.amazonaws.com
+                - glue.amazonaws.com
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
@@ -141,8 +143,7 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ContainerDefinitions:
-        -
-          Name: !FindInMap [TaskMap, upload, name]
+        - Name: !FindInMap [TaskMap, upload, name]
           Image: !Sub
             - ${AccountId}.dkr.ecr.${Region}.amazonaws.com/${RepoName}
             - AccountId: !Ref AWS::AccountId
@@ -174,8 +175,7 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ContainerDefinitions:
-        -
-          Name: !FindInMap [TaskMap, unzip, name]
+        - Name: !FindInMap [TaskMap, unzip, name]
           Image: !Sub
             - ${AccountId}.dkr.ecr.${Region}.amazonaws.com/${RepoName}
             - AccountId: !Ref AWS::AccountId
@@ -221,8 +221,8 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-         S3Bucket: !Ref PreBucket
-         S3Key: !Sub
+        S3Bucket: !Ref PreBucket
+        S3Key: !Sub
           - ${lambda_dir}/${task_name}/lambda_handler.py
           - lambda_dir: !FindInMap [DirMap, lambda, name]
             task_name: !FindInMap [TaskMap, triggerUnzip, name]
@@ -256,9 +256,9 @@ Resources:
     Type: AWS::Glue::Job
     Properties:
       Command:
-         Name: glueetl
-         PythonVersion: 3
-         ScriptLocation: !Sub
+        Name: glueetl
+        PythonVersion: 3
+        ScriptLocation: !Sub
           - s3://${bucket_name}/${glue_dir}/${job_name}/glue_parser.py
           - bucket_name: !Ref PreBucket
             glue_dir: !FindInMap [DirMap, glue, name]
@@ -317,9 +317,9 @@ Resources:
       Targets:
         S3Targets:
           - Path: !Sub
-            - s3://${bucket_name}/${data_dir}
-            - bucket_name: !Ref ProjectName
-              data_dir: !FindInMap [DirMap, data, name]
+              - s3://${bucket_name}/${data_dir}
+              - bucket_name: !Ref ProjectName
+                data_dir: !FindInMap [DirMap, data, name]
 
   ParseXMLTrigger:
     Type: AWS::Glue::Trigger
@@ -340,3 +340,82 @@ Resources:
       - ParseXMLWorkflow
       - ParseXMLCrawler
       - ParseXMLJob
+
+  LambdaRolePrediction:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      RoleName: lambda-predict
+
+  TriggerPredictLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref PreBucket
+        S3Key: !Sub
+          - ${lambda_dir}/${task_name}/lambda_handler.py
+          - lambda_dir: !FindInMap [DirMap, lambda, name]
+            task_name: !FindInMap [TaskMap, triggerPredict, name]
+      Description: Run prediction from user request
+      FunctionName: !FindInMap [TaskMap, triggerPredict, name]
+      Handler: lambda_handler.lambda_handler
+      MemorySize: 128
+      PackageType: Zip
+      Role: !GetAtt LambdaRolePrediction.Arn
+      Runtime: python3.7
+      Timeout: 10
+    DependsOn:
+      - LambdaRolePrediction
+
+  ModelApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: !Ref ProjectName
+
+  ModelApiPost:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !GetAtt TriggerPredictLambda.Arn
+      ResourceId: !GetAtt ModelApi.RootResourceId
+      RestApiId: !Ref ModelApi
+    DependsOn:
+      - ModelApi
+      - TriggerPredictLambda
+
+  ModelApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref ModelApi
+      StageName: prod
+    DependsOn:
+      - ModelApiPost
+
+  TriggerPredictLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt TriggerPredictLambda.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ModelApi}/prod/POST/
+    DependsOn:
+      - ModelApiDeployment
