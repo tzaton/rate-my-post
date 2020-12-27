@@ -1,0 +1,10 @@
+android.stackexchange.com
+askubuntu.com
+cs.stackexchange.com
+datascience.stackexchange.com
+dba.stackexchange.com
+devops.stackexchange.com
+gamedev.stackexchange.com
+raspberrypi.stackexchange.com
+softwareengineering.stackexchange.com
+unix.stackexchange.com
