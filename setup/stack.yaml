@@ -395,6 +395,37 @@ Resources:
           - REGIONAL
       Name: !Ref ProjectName
 
+  ModelApiOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId: !Ref ModelApi
+      ResourceId: !GetAtt ModelApi.RootResourceId
+      HttpMethod: OPTIONS
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ""
+            PassthroughBehavior: WHEN_NO_MATCH
+            RequestTemplates:
+              application/json: '{"statusCode": 200}'
+        MethodResponses:
+          - StatusCode: 200
+            ResponseModels:
+              application/json: "Empty"
+      ResponseParameters:
+        method.response.header.Access-Control-Allow-Headers: false
+        method.response.header.Access-Control-Allow-Methods: false
+        method.response.header.Access-Control-Allow-Origin: false
+    DependsOn:
+      - ModelApi
+
   ModelApiPost:
     Type: AWS::ApiGateway::Method
     Properties:
