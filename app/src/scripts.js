@@ -22,30 +22,36 @@ var baseUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/${stageName}
 $(document).ready(function () {
     $("#submitPost").click(function (event) {
         event.preventDefault();
+        var form = $("#userForm")[0];
+        if (form.checkValidity() === false) {
+            event.stopPropagation();
+        }
+        else {
+            var inputData = {
+                "forumName": $("#forumName").val(),
+                "userName": $("#userName").val(),
+                "postTitle": $("#postTitle").val(),
+                "postBody": $("#postBody").val(),
+                "postTags": $("#postTags").val()
+            };
 
-        var inputData = {
-            "forumName": $("#forumName").val(),
-            "userName": $("#userName").val(),
-            "postTitle": $("#postTitle").val(),
-            "postBody": $("#postBody").val(),
-            "postTags": $("#postTags").val()
-        };
-
-        $.ajax({
-            url: baseUrl,
-            type: 'POST',
-            dataType: "json",
-            crossDomain: "true",
-            data: JSON.stringify(inputData),
-            contentType: 'application/json; charset=utf-8',
-            success: function (response) {
-                var responsePercentage = parseFloat(response).toPrecision(4) * 100 + "%";
-                var result = `<div class="card bg-light"><div class="card-body">Estimated probability of your question being answered is <b>~${responsePercentage}</b></div></div>`;
-                $("#postResponse").html(result);
-            },
-            error: function () {
-                alert("ERROR");
-            }
-        });
+            $.ajax({
+                url: baseUrl,
+                type: 'POST',
+                dataType: "json",
+                crossDomain: "true",
+                data: JSON.stringify(inputData),
+                contentType: 'application/json; charset=utf-8',
+                success: function (response) {
+                    var responsePercentage = parseFloat(response).toPrecision(4) * 100 + "%";
+                    var result = `<div class="card bg-light"><div class="card-body">Estimated probability of your question being answered is <b>~${responsePercentage}</b></div></div>`;
+                    $("#postResponse").html(result);
+                },
+                error: function () {
+                    alert("ERROR");
+                }
+            });
+        }
+        form.classList.add('was-validated');
     });
 });

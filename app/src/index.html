@@ -16,7 +16,7 @@
         <h1>Rate My Post</h1>
         <p class="lead">Test your Stack Exchange post to see how likely your question is to be answered!</p>
         <div class="pt-3">
-            <form class="needs-validation" method="POST" novalidate>
+            <form id="userForm" class="needs-validation" method="POST" novalidate="">
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label for="forumName" class="font-weight-bold">Forum name</label>
@@ -74,7 +74,7 @@
                         </small>
                     </div>
                 </div>
-                <div class="text-center pt-1 pb-2"><button type="submit" class="btn btn-primary"
+                <div class="text-center pt-1 pb-2"><button type="submit" class="btn btn-dark"
                         id="submitPost">Submit</button></div>
             </form>
         </div>
@@ -97,26 +97,6 @@
 
     <!-- Load functions -->
     <script src="scripts.js"></script>
-    <!-- Validate before submit -->
-    <script>
-        (function () {
-            'use strict';
-
-            window.addEventListener('load', function () {
-                var forms = document.getElementsByClassName('needs-validation');
-
-                var validation = Array.prototype.filter.call(forms, function (form) {
-                    form.addEventListener('submit', function (event) {
-                        if (form.checkValidity() === false) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }
-                        form.classList.add('was-validated');
-                    }, false);
-                });
-            }, false);
-        })();
-    </script>
 </body>
 
 </html>

@@ -377,6 +377,16 @@ Resources:
     DependsOn:
       - LambdaRolePrediction
 
+  TriggerPredictLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - /aws/lambda/${lambdaFunctionName}
+        - lambdaFunctionName: !Ref TriggerPredictLambda
+      RetentionInDays: 30
+    DependsOn:
+      - TriggerPredictLambda
+
   ModelApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
