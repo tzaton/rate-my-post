@@ -5,10 +5,10 @@ Description: Setup infrastructure for rate-my-post project
 Parameters:
   ProjectName:
     Type: String
-    Default: rate-my-post-2
+    Default: rate-my-post
   PreBucket:
     Type: String
-    Default: rate-my-post-pre-2
+    Default: rate-my-post-pre
   AppBucket:
     Type: String
     Default: rate-my-post-app
@@ -16,15 +16,15 @@ Parameters:
 Mappings:
   TaskMap:
     upload:
-      name: zip-to-s3-2
+      name: zip-to-s3
     triggerUnzip:
-      name: s3-to-ecs-2
+      name: s3-to-ecs
     unzip:
-      name: unzip-on-s3-2
+      name: unzip-on-s3
     parse:
-      name: parse-xml-2
+      name: parse-xml
     triggerPredict:
-      name: run-prediction-2
+      name: run-prediction
   DirMap:
     unzip:
       name: unzip
@@ -91,7 +91,7 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
-      RoleName: ecs-run-task-s3-2
+      RoleName: ecs-run-task-s3
 
   LambdaRoleS3:
     Type: AWS::IAM::Role
@@ -109,7 +109,7 @@ Resources:
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
         - arn:aws:iam::aws:policy/AmazonEC2ContainerServiceFullAccess
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      RoleName: lambda-get-s3-run-ecs-2
+      RoleName: lambda-get-s3-run-ecs
 
   GlueRoleS3:
     Type: AWS::IAM::Role
@@ -127,7 +127,7 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
-      RoleName: glue-run-job-s3-2
+      RoleName: glue-run-job-s3
 
   UploadTaskRepo:
     Type: AWS::ECR::Repository
