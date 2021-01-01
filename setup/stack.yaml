@@ -129,6 +129,22 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
       RoleName: glue-run-job-s3
 
+  ECSExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      RoleName: ecs-execute-task
+
   UploadTaskRepo:
     Type: AWS::ECR::Repository
     Properties:
@@ -159,7 +175,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
       Cpu: 2vCPU
-      ExecutionRoleArn: ecsTaskExecutionRole
+      ExecutionRoleArn: !Ref ECSExecutionRole
       Family: !FindInMap [TaskMap, upload, name]
       Memory: 4GB
       NetworkMode: awsvpc
@@ -191,7 +207,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
       Cpu: 1vCPU
-      ExecutionRoleArn: ecsTaskExecutionRole
+      ExecutionRoleArn: !Ref ECSExecutionRole
       Family: !FindInMap [TaskMap, unzip, name]
       Memory: 2GB
       NetworkMode: awsvpc
@@ -412,17 +428,17 @@ Resources:
               method.response.header.Access-Control-Allow-Origin: "'*'"
             ResponseTemplates:
               application/json: ""
-            PassthroughBehavior: WHEN_NO_MATCH
-            RequestTemplates:
-              application/json: '{"statusCode": 200}'
-        MethodResponses:
-          - StatusCode: 200
-            ResponseModels:
-              application/json: "Empty"
-      ResponseParameters:
-        method.response.header.Access-Control-Allow-Headers: false
-        method.response.header.Access-Control-Allow-Methods: false
-        method.response.header.Access-Control-Allow-Origin: false
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
     DependsOn:
       - ModelApi
 

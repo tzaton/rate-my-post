@@ -5,7 +5,7 @@ set -e
 PRE_BUCKET_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Parameters.PreBucket.Default')
 APP_BUCKET_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Parameters.AppBucket.Default')
 
-# technical ('pre')
+# pre
 aws s3api create-bucket --bucket "$PRE_BUCKET_NAME"
 aws s3api put-public-access-block \
     --bucket "$PRE_BUCKET_NAME" \
@@ -24,6 +24,7 @@ aws s3 website s3://"$APP_BUCKET_NAME"/ --index-document index.html --error-docu
 
 # Upload lambda functions
 . s3-to-ecs/lambda-upload.sh
+. app/lambda-upload.sh
 
 # Upload glue jobs
 . parse-xml/glue-job-upload.sh
