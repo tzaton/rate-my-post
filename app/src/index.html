@@ -85,7 +85,7 @@
     </main>
     <footer class="footer">
         <div class="container">
-            <span class="text-muted">&copy; Tomasz Zatoń, 2020</span>
+            <span class="text-muted">&copy; Tomasz Zatoń | 2021</span>
         </div>
     </footer>
 
@@ -97,6 +97,34 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
         integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
         crossorigin="anonymous"></script>
+    <script src="https://cdn.tiny.cloud/1/l4xkqsaf1p3rjgl2vafehyux08etaphukuvyqzu7x5k4pjhx/tinymce/5/tinymce.min.js"
+        referrerpolicy="origin"></script>
+    <script>
+        tinymce.init({
+            skin: "bootstrap",
+            selector: 'textarea#postBody',
+            height: '360',
+            plugins: 'lists, link, image',
+            statusbar: false,
+            toolbar: 'undo redo | styleselect | bold italic | bullist numlist | blockquote image link | removeformat',
+            setup: (editor) => {
+                editor.on("init", () => {
+                    editor.getContainer().style.transition =
+                        "border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out";
+                });
+                editor.on("focus", () => {
+                    (editor.getContainer().style.boxShadow =
+                        "0 0 0 .2rem rgba(0, 123, 255, .25)"),
+                        (editor.getContainer().style.borderColor = "#80bdff");
+                });
+                editor.on("blur", () => {
+                    (editor.getContainer().style.boxShadow = ""),
+                        (editor.getContainer().style.borderColor = "");
+                });
+                editor.on("change", () => { editor.save(); });
+            },
+        });
+    </script>
 
     <!-- Load functions -->
     <script src="scripts.js"></script>
