@@ -14,7 +14,7 @@ $(document).ready(function () {
 // API parameters
 var region = "us-east-1";
 var stageName = "prod";
-var apiId = "z6c1y8f1vc";
+var apiId = "iwsgzq83p1";
 var baseUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/${stageName}/`;
 
 
