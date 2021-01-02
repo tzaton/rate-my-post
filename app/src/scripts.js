@@ -32,7 +32,9 @@ $(document).ready(function () {
                 "userName": $("#userName").val(),
                 "postTitle": $("#postTitle").val(),
                 "postBody": $("#postBody").val(),
-                "postTags": $("#postTags").val()
+                "postTags": $("#postTags").val(),
+                "postTime": $("#postTime").val(),
+                "postDate": $("#postDate").val(),
             };
 
             $.ajax({
