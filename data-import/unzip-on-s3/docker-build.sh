@@ -8,5 +8,5 @@ REPO_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.TaskMap.unzip.nam
 IMAGE_NAME="$ECR"/"$REPO_NAME"
 
 aws ecr get-login-password | docker login --username AWS --password-stdin "$ECR"
-docker build -f unzip-on-s3/Dockerfile -t "$IMAGE_NAME":latest .
+docker build -f data-import/unzip-on-s3/Dockerfile -t "$IMAGE_NAME":latest .
 docker push "$IMAGE_NAME":latest

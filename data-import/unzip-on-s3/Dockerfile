@@ -10,6 +10,6 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Run job
-COPY zip-to-s3/src /src
+COPY data-import/unzip-on-s3/src /src
 WORKDIR /src
 ENTRYPOINT ["python", "main.py"]

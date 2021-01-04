@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-. app/lambda-upload.sh
+. data-import/s3-to-ecs/lambda-upload.sh
 
 aws lambda update-function-code \
     --function-name "$LAMBDA_NAME" \

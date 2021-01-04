@@ -23,11 +23,11 @@ aws s3api put-bucket-policy --bucket "$APP_BUCKET_NAME" --policy file://app/poli
 aws s3 website s3://"$APP_BUCKET_NAME"/ --index-document index.html --error-document error.html
 
 # Upload lambda functions
-. s3-to-ecs/lambda-upload.sh
-. app/lambda-upload.sh
+. data-import/s3-to-ecs/lambda-upload.sh
+. model/deployment/lambda-upload.sh
 
 # Upload glue jobs
-. parse-xml/glue-job-upload.sh
+. data-processing/parse-xml/glue-job-upload.sh
 
 # Upload jars
 JAR_DIR=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.DirMap.jars.name')

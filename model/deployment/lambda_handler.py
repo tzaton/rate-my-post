@@ -15,7 +15,6 @@ client = boto3.client('runtime.sagemaker')
 def lambda_handler(event, context):
 
     data = json.loads(event["body"])
-    print(data)
 
     # Get feature values
     # time

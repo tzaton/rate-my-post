@@ -9,7 +9,7 @@ export LAMBDA_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.TaskMap.
 export LAMBDA_KEY="$LAMBDA_DIR"/"$LAMBDA_NAME".zip
 
 # Install extra packages
-LAMBDA_VIRTUALENV=app/lambda-venv
+LAMBDA_VIRTUALENV=model/deployment/lambda-venv
 rm -rf "$LAMBDA_VIRTUALENV"
 virtualenv "$LAMBDA_VIRTUALENV"
 source "$LAMBDA_VIRTUALENV"/bin/activate
@@ -21,12 +21,12 @@ cd "$LAMBDA_VIRTUALENV"/lib/python3.7/site-packages
 zip -r ../../../../"$LAMBDA_NAME".zip .
 cd ../../../../
 zip -g "$LAMBDA_NAME".zip lambda_handler.py
-cd ..
+cd ../../
 rm -rf "$LAMBDA_VIRTUALENV"
 
 aws s3api put-object \
     --bucket "$BUCKET_NAME" \
     --key  "$LAMBDA_KEY" \
-    --body app/"$LAMBDA_NAME".zip
+    --body model/deployment/"$LAMBDA_NAME".zip
 
-rm app/"$LAMBDA_NAME".zip
+rm model/deployment/"$LAMBDA_NAME".zip
