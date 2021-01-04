@@ -1,3 +1,11 @@
+// Set default date and time to current UTC
+$(document).ready(function () {
+    var date = new Date();
+    $("#postTime").val(`${date.getUTCHours().toString().padStart(2, '0')}:${date.getUTCMinutes().toString().padStart(2, '0')}`); // HH:MI
+    $("#postDate").val(`${date.getUTCFullYear().toString()}-${(date.getUTCMonth() + 1).toString().padStart(2, '0')}-${date.getUTCDate().toString().padStart(2, '0')}`); // YYYY-MM-DD
+});
+
+
 // Load forum names
 $(document).ready(function () {
     $.get('forums.txt', function (data) {
@@ -14,7 +22,7 @@ $(document).ready(function () {
 // API parameters
 var region = "us-east-1";
 var stageName = "prod";
-var apiId = "iwsgzq83p1";
+var apiId = "lhbcpysxac";
 var baseUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/${stageName}/`;
 
 

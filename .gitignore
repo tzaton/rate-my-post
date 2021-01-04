@@ -1,7 +1,9 @@
-venv/
+*venv/
 .vscode/
 __pycache__/
 .ipynb_checkpoints/
 notes.md
 readme.txt
 *.jar
+*.zip
+test*

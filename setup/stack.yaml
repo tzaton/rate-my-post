@@ -38,6 +38,8 @@ Mappings:
       name: jars
     lambda:
       name: lambda
+    modelTraining:
+      name: training
 
 Resources:
   Bucket:
@@ -76,6 +78,17 @@ Resources:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
         Name: default
+
+  GlueDBTraining:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: training
+        LocationUri: !Sub
+          - s3://${bucketName}/${directoryName}
+          - bucketName: !Ref ProjectName
+            directoryName: !FindInMap [DirMap, modelTraining, name]
 
   ECSRoleS3:
     Type: AWS::IAM::Role
@@ -371,6 +384,14 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Policies:
+        - PolicyName: LambdaSagemakerInvoke
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: "sagemaker:InvokeEndpoint"
+                Resource: "*"
       RoleName: lambda-predict
 
   TriggerPredictLambda:
@@ -379,17 +400,21 @@ Resources:
       Code:
         S3Bucket: !Ref PreBucket
         S3Key: !Sub
-          - ${lambda_dir}/${task_name}/lambda_handler.py
+          - ${lambda_dir}/${task_name}.zip
           - lambda_dir: !FindInMap [DirMap, lambda, name]
             task_name: !FindInMap [TaskMap, triggerPredict, name]
       Description: Run prediction from user request
+      Environment:
+        Variables:
+          ENDPOINT_NAME: !Ref ProjectName
+          NLTK_DATA: nltk_data
       FunctionName: !FindInMap [TaskMap, triggerPredict, name]
       Handler: lambda_handler.lambda_handler
-      MemorySize: 128
+      MemorySize: 256
       PackageType: Zip
       Role: !GetAtt LambdaRolePrediction.Arn
       Runtime: python3.7
-      Timeout: 10
+      Timeout: 30
     DependsOn:
       - LambdaRolePrediction
 
@@ -476,3 +501,29 @@ Resources:
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ModelApi}/prod/POST/
     DependsOn:
       - ModelApiDeployment
+
+  EMRSagemakerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      RoleName: emr-sagemaker
+
+  EMRSagemakerProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: emr-sagemaker
+      Roles:
+        - emr-sagemaker
+    DependsOn:
+      - EMRSagemakerRole

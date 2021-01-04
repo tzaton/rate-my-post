@@ -6,13 +6,27 @@ export BUCKET_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Parameters.PreBuc
 # Upload lambda function code
 LAMBDA_DIR=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.DirMap.lambda.name')
 export LAMBDA_NAME=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.TaskMap.triggerPredict.name')
-export LAMBDA_KEY="$LAMBDA_DIR"/"$LAMBDA_NAME"/lambda_handler.py
+export LAMBDA_KEY="$LAMBDA_DIR"/"$LAMBDA_NAME".zip
 
-zip -j "$LAMBDA_NAME".zip app/lambda_handler.py
+# Install extra packages
+LAMBDA_VIRTUALENV=app/lambda-venv
+rm -rf "$LAMBDA_VIRTUALENV"
+virtualenv "$LAMBDA_VIRTUALENV"
+source "$LAMBDA_VIRTUALENV"/bin/activate
+pip install nltk
+mkdir "$LAMBDA_VIRTUALENV"/nltk_data
+python -m nltk.downloader -d "$LAMBDA_VIRTUALENV"/lib/python3.7/site-packages/nltk_data punkt
+deactivate
+cd "$LAMBDA_VIRTUALENV"/lib/python3.7/site-packages
+zip -r ../../../../"$LAMBDA_NAME".zip .
+cd ../../../../
+zip -g "$LAMBDA_NAME".zip lambda_handler.py
+cd ..
+rm -rf "$LAMBDA_VIRTUALENV"
 
 aws s3api put-object \
     --bucket "$BUCKET_NAME" \
     --key  "$LAMBDA_KEY" \
-    --body "$LAMBDA_NAME".zip
+    --body app/"$LAMBDA_NAME".zip
 
-rm "$LAMBDA_NAME".zip
+rm app/"$LAMBDA_NAME".zip
