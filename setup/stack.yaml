@@ -25,6 +25,8 @@ Mappings:
       name: parse-xml
     triggerPredict:
       name: run-prediction
+    predict:
+      name: post-predict
   DirMap:
     unzip:
       name: unzip
@@ -406,7 +408,7 @@ Resources:
       Description: Run prediction from user request
       Environment:
         Variables:
-          ENDPOINT_NAME: !Ref ProjectName
+          ENDPOINT_NAME: !FindInMap [TaskMap, predict, name]
           NLTK_DATA: nltk_data
       FunctionName: !FindInMap [TaskMap, triggerPredict, name]
       Handler: lambda_handler.lambda_handler
@@ -502,7 +504,7 @@ Resources:
     DependsOn:
       - ModelApiDeployment
 
-  EMRSagemakerRole:
+  SagemakerRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -510,20 +512,17 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action:
+              - sts:AssumeRole
+          - Effect: Allow
+            Principal:
               Service:
-                - ec2.amazonaws.com
+                - sagemaker.amazonaws.com
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
-      RoleName: emr-sagemaker
-
-  EMRSagemakerProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      InstanceProfileName: emr-sagemaker
-      Roles:
-        - emr-sagemaker
-    DependsOn:
-      - EMRSagemakerRole
+      RoleName: sagemaker-role

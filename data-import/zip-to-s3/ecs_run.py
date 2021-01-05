@@ -5,7 +5,7 @@ from cfn_tools import load_yaml
 from src.arg_parser import get_parser
 
 
-with open(Path(__file__).parents[1]/'setup/stack.yaml') as f:
+with open(Path(__file__).parents[2]/'setup/stack.yaml') as f:
     env = load_yaml(f)
 task_family = env['Mappings']['TaskMap']['upload']['name']
 cluster_name = env['Parameters']['ProjectName']['Default']

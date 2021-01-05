@@ -7,8 +7,6 @@ import boto3
 import nltk
 
 ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
-NLTK_DATA = os.environ['NLTK_DATA']
-nltk.data.path.append(NLTK_DATA)
 client = boto3.client('runtime.sagemaker')
 
 
@@ -95,55 +93,239 @@ def lambda_handler(event, context):
     tag_post_count_365d_avg = 0
 
     # Invoke endpoint
-    payload = {
-        "data":
-            [
-                post_hour,
-                post_dayofweek,
-                post_month,
-                post_year,
-                post_body_char_count,
-                post_body_nocode_char_count,
-                post_body_code_perc,
-                post_body_code_flag,
-                post_body_image_flag,
-                post_body_link_flag,
-                post_body_bold_flag,
-                post_title_upper_flag,
-                post_title_question_flag,
-                post_title_char_count,
-                post_tag_count,
-                post_body_sent_count,
-                post_body_word_count,
-                post_title_word_count,
-                tag_post_count_max,
-                tag_post_count_30d_max,
-                tag_post_count_365d_max,
-                tag_post_count_avg,
-                tag_post_count_30d_avg,
-                tag_post_count_365d_avg,
-                user_age_days,
-                user_age_months,
-                user_website_flag,
-                user_location_flag,
-                user_about_me_flag,
-                user_badge_count,
-                user_badge_1_count,
-                user_badge_2_count,
-                user_badge_3_count,
-                user_post_count,
-                user_question_count,
-                user_answer_count,
-                user_first_post_flag,
-                user_first_question_flag,
-                user_answered_questions_count,
-                user_accepted_answers_count,
-                user_score,
-                user_question_score,
-                user_answer_score,
-                0
-            ]
-    }
+    payload = json.dumps({"schema": {
+        "input": [
+            {
+                "name": "post_hour",
+                "type": "int"
+            },
+            {
+                "name": "post_dayofweek",
+                "type": "int"
+            },
+            {
+                "name": "post_month",
+                "type": "int"
+            },
+            {
+                "name": "post_year",
+                "type": "int"
+            },
+            {
+                "name": "post_body_char_count",
+                "type": "int"
+            },
+            {
+                "name": "post_body_nocode_char_count",
+                "type": "int"
+            },
+            {
+                "name": "post_body_code_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_body_code_flag",
+                "type": "int"
+            },
+            {
+                "name": "post_body_image_flag",
+                "type": "int"
+            },
+            {
+                "name": "post_body_link_flag",
+                "type": "int"
+            },
+            {
+                "name": "post_body_bold_flag",
+                "type": "int"
+            },
+            {
+                "name": "post_title_upper_flag",
+                "type": "int"
+            },
+            {
+                "name": "post_title_question_flag",
+                "type": "int"
+            },
+            {
+                "name": "post_title_char_count",
+                "type": "int"
+            },
+            {
+                "name": "post_tag_count",
+                "type": "int"
+            },
+            {
+                "name": "post_body_sent_count",
+                "type": "int"
+            },
+            {
+                "name": "post_body_word_count",
+                "type": "int"
+            },
+            {
+                "name": "post_title_word_count",
+                "type": "int"
+            },
+            {
+                "name": "tag_post_count_max",
+                "type": "long"
+            },
+            {
+                "name": "tag_post_count_30d_max",
+                "type": "long"
+            },
+            {
+                "name": "tag_post_count_365d_max",
+                "type": "long"
+            },
+            {
+                "name": "tag_post_count_avg",
+                "type": "double"
+            },
+            {
+                "name": "tag_post_count_30d_avg",
+                "type": "double"
+            },
+            {
+                "name": "tag_post_count_365d_avg",
+                "type": "double"
+            },
+            {
+                "name": "user_age_days",
+                "type": "int"
+            },
+            {
+                "name": "user_age_months",
+                "type": "double"
+            },
+            {
+                "name": "user_website_flag",
+                "type": "int"
+            },
+            {
+                "name": "user_location_flag",
+                "type": "int"
+            },
+            {
+                "name": "user_about_me_flag",
+                "type": "int"
+            },
+            {
+                "name": "user_badge_count",
+                "type": "long"
+            },
+            {
+                "name": "user_badge_1_count",
+                "type": "long"
+            },
+            {
+                "name": "user_badge_2_count",
+                "type": "long"
+            },
+            {
+                "name": "user_badge_3_count",
+                "type": "long"
+            },
+            {
+                "name": "user_post_count",
+                "type": "long"
+            },
+            {
+                "name": "user_question_count",
+                "type": "long"
+            },
+            {
+                "name": "user_answer_count",
+                "type": "long"
+            },
+            {
+                "name": "user_first_post_flag",
+                "type": "int"
+            },
+            {
+                "name": "user_first_question_flag",
+                "type": "int"
+            },
+            {
+                "name": "user_answered_questions_count",
+                "type": "long"
+            },
+            {
+                "name": "user_accepted_answers_count",
+                "type": "long"
+            },
+            {
+                "name": "user_score",
+                "type": "long"
+            },
+            {
+                "name": "user_question_score",
+                "type": "long"
+            },
+            {
+                "name": "user_answer_score",
+                "type": "long"
+            },
+            {
+                "name": "answer_accepted_7d_flag",
+                "type": "int"
+            }
+        ],
+        "output":
+        {
+            "name": "probability",
+            "type": "double",
+            "struct": "vector"
+        }
+    },
+        "data": [
+        post_hour,
+        post_dayofweek,
+        post_month,
+        post_year,
+        post_body_char_count,
+        post_body_nocode_char_count,
+        post_body_code_perc,
+        post_body_code_flag,
+        post_body_image_flag,
+        post_body_link_flag,
+        post_body_bold_flag,
+        post_title_upper_flag,
+        post_title_question_flag,
+        post_title_char_count,
+        post_tag_count,
+        post_body_sent_count,
+        post_body_word_count,
+        post_title_word_count,
+        tag_post_count_max,
+        tag_post_count_30d_max,
+        tag_post_count_365d_max,
+        tag_post_count_avg,
+        tag_post_count_30d_avg,
+        tag_post_count_365d_avg,
+        user_age_days,
+        user_age_months,
+        user_website_flag,
+        user_location_flag,
+        user_about_me_flag,
+        user_badge_count,
+        user_badge_1_count,
+        user_badge_2_count,
+        user_badge_3_count,
+        user_post_count,
+        user_question_count,
+        user_answer_count,
+        user_first_post_flag,
+        user_first_question_flag,
+        user_answered_questions_count,
+        user_accepted_answers_count,
+        user_score,
+        user_question_score,
+        user_answer_score,
+        0
+    ]
+    })
 
     response = client.invoke_endpoint(EndpointName=ENDPOINT_NAME,
                                       ContentType='application/json',
