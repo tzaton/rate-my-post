@@ -8,4 +8,4 @@ sudo python3 -m pip install pyarrow==0.14 pandas==1.2.0
 
 sudo yum install python3-devel -y
 sudo python3 -m pip install cython
-sudo python3 -m pip install mleap
+sudo python3 -m pip install mleap boto3

@@ -2,6 +2,7 @@ import json
 import os
 import re
 from datetime import datetime
+from pprint import pformat
 
 import boto3
 import nltk
@@ -13,6 +14,7 @@ client = boto3.client('runtime.sagemaker')
 def lambda_handler(event, context):
 
     data = json.loads(event["body"])
+    print(f"User input:\n{pformat(data)}")
 
     # Get feature values
     # time
@@ -93,7 +95,7 @@ def lambda_handler(event, context):
     tag_post_count_365d_avg = 0
 
     # Invoke endpoint
-    payload = json.dumps({"schema": {
+    payload = {"schema": {
         "input": [
             {
                 "name": "post_hour",
@@ -268,7 +270,7 @@ def lambda_handler(event, context):
                 "type": "long"
             },
             {
-                "name": "answer_accepted_7d_flag",
+                "name": "y",
                 "type": "int"
             }
         ],
@@ -325,13 +327,20 @@ def lambda_handler(event, context):
         user_answer_score,
         0
     ]
-    })
+    }
+
+    features = (dict(zip([x["name"]
+                          for x in payload['schema']['input']], payload['data'])))
+    print(f"Calculated features:\n{pformat(features)}")
 
     response = client.invoke_endpoint(EndpointName=ENDPOINT_NAME,
                                       ContentType='application/json',
-                                      Body=payload)
+                                      Body=json.dumps(payload))
 
     output = response['Body'].read().decode().split(",")[1]
+
+    print(f"Model reponse (probability): {output}")
+
     return {'statusCode': 200,
             'headers': {'Content-Type': 'text/plain',
                         'Access-Control-Allow-Origin': '*'},
