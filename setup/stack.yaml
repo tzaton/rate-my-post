@@ -23,6 +23,10 @@ Mappings:
       name: unzip-on-s3
     parse:
       name: parse-xml
+    featureEngineering:
+      name: feature-engineering
+    createFeatures:
+      name: get-features
     triggerPredict:
       name: run-prediction
     predict:
@@ -80,6 +84,10 @@ Resources:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput:
         Name: default
+        LocationUri: !Sub
+          - s3://${bucketName}/${directoryName}
+          - bucketName: !Ref ProjectName
+            directoryName: !FindInMap [DirMap, data, name]
 
   GlueDBTraining:
     Type: AWS::Glue::Database
@@ -143,6 +151,25 @@ Resources:
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole
         - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
       RoleName: glue-run-job-s3
+
+  GlueRoleS3DynamoDB:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - glue.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceNotebookRole
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      RoleName: glue-run-job-s3-dynamodb
 
   ECSExecutionRole:
     Type: AWS::IAM::Role
@@ -290,11 +317,12 @@ Resources:
         Name: glueetl
         PythonVersion: 3
         ScriptLocation: !Sub
-          - s3://${bucket_name}/${glue_dir}/${job_name}/glue_parser.py
+          - s3://${bucket_name}/${glue_dir}/${job_name}/glue_job.py
           - bucket_name: !Ref PreBucket
             glue_dir: !FindInMap [DirMap, glue, name]
             job_name: !FindInMap [TaskMap, parse, name]
       DefaultArguments:
+        --enable-glue-datacatalog: ""
         --enable-continuous-cloudwatch-log: true
         --enable-continuous-log-filter: true
         --job-language: python
@@ -305,13 +333,14 @@ Resources:
         --bucket_name: !Ref ProjectName
         --input_dir: !FindInMap [DirMap, unzip, name]
         --output_dir: !FindInMap [DirMap, data, name]
+        --database_name: default
       Description: Parse XML data and save to parquet
       ExecutionProperty:
         MaxConcurrentRuns: 1
       GlueVersion: 2.0
       MaxRetries: 0
       Name: !FindInMap [TaskMap, parse, name]
-      NumberOfWorkers: 8
+      NumberOfWorkers: 10
       Role: !GetAtt GlueRoleS3.Arn
       Timeout: 60
       WorkerType: G.1X
@@ -319,58 +348,52 @@ Resources:
       - GlueRoleS3
       - Bucket
 
-  ParseXMLWorkflow:
+  GetFeaturesJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Command:
+        Name: glueetl
+        PythonVersion: 3
+        ScriptLocation: !Sub
+          - s3://${bucket_name}/${glue_dir}/${job_name}/glue_job.py
+          - bucket_name: !Ref PreBucket
+            glue_dir: !FindInMap [DirMap, glue, name]
+            job_name: !FindInMap [TaskMap, createFeatures, name]
+      DefaultArguments:
+        --enable-glue-datacatalog: ""
+        --enable-continuous-cloudwatch-log: true
+        --enable-continuous-log-filter: true
+        --job-language: python
+      Description: Create DynamoDB with features for prediction
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+      GlueVersion: 2.0
+      MaxRetries: 0
+      Name: !FindInMap [TaskMap, createFeatures, name]
+      NumberOfWorkers: 10
+      Role: !GetAtt GlueRoleS3DynamoDB.Arn
+      Timeout: 60
+      WorkerType: G.1X
+    DependsOn:
+      - GlueRoleS3DynamoDB
+      - Bucket
+
+  DataProcessingWorkflow:
     Type: AWS::Glue::Workflow
     Properties:
-      Description: Parse XML and update metastore
-      Name: !FindInMap [TaskMap, parse, name]
+      Description: Parse XML and create tables
+      Name: data-processing
 
   ParseXMLStart:
     Type: AWS::Glue::Trigger
     Properties:
       Actions:
         - JobName: !FindInMap [TaskMap, parse, name]
-      Name: start
+      Name: start-workflow
       Type: ON_DEMAND
-      WorkflowName: !Ref ParseXMLWorkflow
+      WorkflowName: !Ref DataProcessingWorkflow
     DependsOn:
-      - ParseXMLWorkflow
-
-  ParseXMLCrawler:
-    Type: AWS::Glue::Crawler
-    Properties:
-      DatabaseName: default
-      Name: !FindInMap [TaskMap, parse, name]
-      Role: !GetAtt GlueRoleS3.Arn
-      SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
-        DeleteBehavior: DELETE_FROM_DATABASE
-      Targets:
-        S3Targets:
-          - Path: !Sub
-              - s3://${bucket_name}/${data_dir}
-              - bucket_name: !Ref ProjectName
-                data_dir: !FindInMap [DirMap, data, name]
-
-  ParseXMLTrigger:
-    Type: AWS::Glue::Trigger
-    Properties:
-      Actions:
-        - CrawlerName: !Ref ParseXMLCrawler
-      StartOnCreation: true
-      Name: trigger
-      Predicate:
-        Conditions:
-          - JobName: !Ref ParseXMLJob
-            LogicalOperator: EQUALS
-            State: SUCCEEDED
-        Logical: AND
-      Type: CONDITIONAL
-      WorkflowName: !Ref ParseXMLWorkflow
-    DependsOn:
-      - ParseXMLWorkflow
-      - ParseXMLCrawler
-      - ParseXMLJob
+      - DataProcessingWorkflow
 
   SagemakerRole:
     Type: AWS::IAM::Role
@@ -409,6 +432,7 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess
       Policies:
         - PolicyName: LambdaSagemakerInvoke
           PolicyDocument:
@@ -495,3 +519,39 @@ Resources:
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ModelApi}/prod/POST/
     DependsOn:
       - ModelApiDeployment
+
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      TableName: users
+
+  TagTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      TableName: tags
+
+  ForumTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "id"
+          AttributeType: "S"
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: "id"
+          KeyType: "HASH"
+      TableName: forums

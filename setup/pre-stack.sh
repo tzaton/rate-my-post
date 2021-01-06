@@ -28,15 +28,14 @@ aws s3 website s3://"$APP_BUCKET_NAME"/ --index-document index.html --error-docu
 
 # Upload glue jobs
 . data-processing/parse-xml/glue-job-upload.sh
+. data-processing/feature-engineering/glue-job-upload.sh
+. data-processing/get-features/glue-job-upload.sh
 
 # Upload jars
 JAR_DIR=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.DirMap.jars.name')
 
-wget https://repo1.maven.org/maven2/com/databricks/spark-xml_2.11/0.11.0/spark-xml_2.11-0.11.0.jar
+wget -P jars https://repo1.maven.org/maven2/com/databricks/spark-xml_2.11/0.11.0/spark-xml_2.11-0.11.0.jar
+wget -P jars https://repo1.maven.org/maven2/com/johnsnowlabs/nlp/spark-nlp_2.11/2.6.2/spark-nlp_2.11-2.6.2.jar
+wget -P jars https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-core/1.11.930/aws-java-sdk-core-1.11.930.jar
 
-aws s3api put-object \
-    --bucket "$PRE_BUCKET_NAME" \
-    --key  "$JAR_DIR"/spark-xml_2.11-0.11.0.jar \
-    --body spark-xml_2.11-0.11.0.jar
-
-rm spark-xml_2.11-0.11.0.jar
+aws s3 cp jars s3://"$BUCKET_NAME"/"$JAR_DIR" --recursive

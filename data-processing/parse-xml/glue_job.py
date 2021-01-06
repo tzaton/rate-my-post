@@ -1,4 +1,3 @@
-import logging
 import sys
 
 import pyspark.sql.functions as f
@@ -9,25 +8,22 @@ from pyspark.context import SparkContext
 glueContext = GlueContext(SparkContext.getOrCreate())
 spark = glueContext.spark_session
 
-# Logging configuration
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - [%(levelname)s] - %(name)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
-logger = logging.getLogger(__name__)
-
 args = getResolvedOptions(sys.argv, ['JOB_NAME',
                                      'bucket_name',
                                      'input_dir',
-                                     'output_dir'])
+                                     'output_dir',
+                                     'database_name'])
 
 bucket_name = args['bucket_name']
 input_dir = args['input_dir']
 output_dir = args['output_dir']
+database_name = args["database_name"]
 
 
 def save_table(df, table_name, partition_keys=None):
-    logger.info("Saving table: %s", table_name)
+    print(f"Saving table: {table_name}")
     output_path = f"s3://{bucket_name}/{output_dir}/{table_name}"
+    spark.sql(f"drop table if exists {database_name}.{table_name}")
 
     df = df\
         .withColumn('dataset_name',
@@ -40,15 +36,17 @@ def save_table(df, table_name, partition_keys=None):
             .mode("overwrite")\
             .format("parquet")\
             .partitionBy(*partition_keys)\
-            .save(output_path)
+            .option("path", output_path)\
+            .saveAsTable(f"{database_name}.{table_name}")
     else:
         df\
             .coalesce(1)\
             .write\
             .mode("overwrite")\
             .format("parquet")\
-            .save(output_path)
-    logger.info("Table: %s saved at: %s", table_name, output_path)
+            .option("path", output_path)\
+            .saveAsTable(f"{database_name}.{table_name}")
+    print(f"Table: {table_name} saved")
 
 
 # badges
@@ -295,4 +293,4 @@ votes = spark.read.format('xml')\
 save_table(votes, "votes", ["creation_year"])
 
 
-logger.info("Ending execution")
+print("Ending execution")

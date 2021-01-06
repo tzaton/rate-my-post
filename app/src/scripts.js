@@ -37,7 +37,7 @@ $(document).ready(function () {
         else {
             var inputData = {
                 "forumName": $("#forumName").val(),
-                "userName": $("#userName").val(),
+                "userId": $("#userId").val(),
                 "postTitle": $("#postTitle").val(),
                 "postBody": $("#postBody").val(),
                 "postTags": $("#postTags").val(),

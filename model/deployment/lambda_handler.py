@@ -8,7 +8,8 @@ import boto3
 import nltk
 
 ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
-client = boto3.client('runtime.sagemaker')
+sagemaker = boto3.client('runtime.sagemaker')
+dynamodb = boto3.client('dynamodb')
 
 
 def lambda_handler(event, context):
@@ -59,11 +60,10 @@ def lambda_handler(event, context):
 
     # user
     forum_name = data["forumName"]
-    user_name = data["userName"]
+    user_id = data["userId"]
 
     # TODO
     user_age_days = 0
-    user_age_months = 0
     user_website_flag = 0
     user_location_flag = 0
     user_about_me_flag = 0
@@ -198,10 +198,6 @@ def lambda_handler(event, context):
                 "type": "int"
             },
             {
-                "name": "user_age_months",
-                "type": "double"
-            },
-            {
                 "name": "user_website_flag",
                 "type": "int"
             },
@@ -307,7 +303,6 @@ def lambda_handler(event, context):
         tag_post_count_30d_avg,
         tag_post_count_365d_avg,
         user_age_days,
-        user_age_months,
         user_website_flag,
         user_location_flag,
         user_about_me_flag,
@@ -333,9 +328,9 @@ def lambda_handler(event, context):
                           for x in payload['schema']['input']], payload['data'])))
     print(f"Calculated features:\n{pformat(features)}")
 
-    response = client.invoke_endpoint(EndpointName=ENDPOINT_NAME,
-                                      ContentType='application/json',
-                                      Body=json.dumps(payload))
+    response = sagemaker.invoke_endpoint(EndpointName=ENDPOINT_NAME,
+                                         ContentType='application/json',
+                                         Body=json.dumps(payload))
 
     output = response['Body'].read().decode().split(",")[1]
 
