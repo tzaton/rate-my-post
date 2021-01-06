@@ -53,8 +53,24 @@ $(document).ready(function () {
                 data: JSON.stringify(inputData),
                 contentType: 'application/json; charset=utf-8',
                 success: function (response) {
-                    var responsePercentage = parseFloat(response).toPrecision(4) * 100 + "%";
-                    var result = `<div class="card bg-light"><div class="card-body">Estimated probability of your question being answered is <b>~${responsePercentage}</b></div></div>`;
+                    var probOutput = (parseFloat(response['probability']) * 100).toFixed(2) + "%";
+                    var userName = response['user_name'];
+                    if (userName == "") {
+                        userOutput = `<small class="text-muted">User not found. It hasn't been registered on <i>${inputData['forumName']}</i> yet or wrong user ID was provided.</small>`
+                    } else {
+                        userOutput = `<small class="text-muted">User found: <i>${userName}</i>.</small>`
+                    }
+                    var tags = response['tags'];
+                    var tagResponse = "";
+                    Object.keys(tags).forEach(function (t) {
+                        if (tags[t] == false) {
+                            tagResponse += `Tag not found: ${t}<br>`
+                        }
+                    })
+                    if (tagResponse != "") {
+                        tagResponse = `<small class="text-muted">${tagResponse}</small>`
+                    }
+                    var result = `<div class="card bg-light"><div class="card-body">${userOutput}<br>${tagResponse}<br>Estimated probability of your question receiving accepted answer within 7 days is <b>~${probOutput}</b></div></div>`;
                     $("#postResponse").html(result);
                 },
                 error: function () {

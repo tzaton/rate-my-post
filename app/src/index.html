@@ -32,13 +32,13 @@
                     </div>
                     <div class="form-group col-md-6">
                         <label for="userId" class="font-weight-bold">Your user ID</label>
-                        <input type="text" class="form-control" id="userId" required>
+                        <input type="text" class="form-control" id="userId" pattern="[0-9]+" required>
                         <small id="userIdHelp" class="text-muted">
                             User ID on Stack Exchange forum selected as <i>Forum name</i>. It can be found on your
                             community profile page.
                         </small>
                         <div class="invalid-feedback">
-                            User ID is required.
+                            User ID is required. It must be numeric.
                         </div>
                     </div>
                 </div>

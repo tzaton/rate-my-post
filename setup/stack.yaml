@@ -364,6 +364,7 @@ Resources:
         --enable-continuous-cloudwatch-log: true
         --enable-continuous-log-filter: true
         --job-language: python
+        --database_name: default
       Description: Create DynamoDB with features for prediction
       ExecutionProperty:
         MaxConcurrentRuns: 1
@@ -383,6 +384,26 @@ Resources:
     Properties:
       Description: Parse XML and create tables
       Name: data-processing
+
+  ParseXMLTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Actions:
+        - JobName: !Ref GetFeaturesJob
+      StartOnCreation: true
+      Name: trigger
+      Predicate:
+        Conditions:
+          - JobName: !Ref ParseXMLJob
+            LogicalOperator: EQUALS
+            State: SUCCEEDED
+        Logical: AND
+      Type: CONDITIONAL
+      WorkflowName: !Ref DataProcessingWorkflow
+    DependsOn:
+      - GetFeaturesJob
+      - ParseXMLJob
+      - DataProcessingWorkflow
 
   ParseXMLStart:
     Type: AWS::Glue::Trigger

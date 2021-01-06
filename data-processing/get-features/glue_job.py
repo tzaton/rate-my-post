@@ -1,12 +1,18 @@
+import sys
 import time
 
 from awsglue.context import GlueContext
 from awsglue.dynamicframe import DynamicFrame
+from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from pyspark.sql.types import *
 
 glue_context = GlueContext(SparkContext.getOrCreate())
 spark = glue_context.spark_session
+
+args = getResolvedOptions(sys.argv, ['JOB_NAME',
+                                     'database_name'])
+database_name = args["database_name"]
 
 
 def save_table(df, table_name):
@@ -22,7 +28,7 @@ def save_table(df, table_name):
 
 
 spark.sql(f"""
-use default
+use {database_name}
 """)
 
 current_date = spark.sql(
@@ -132,10 +138,12 @@ group by
     .selectExpr(
     "concat(dataset_name, ':', tag) as id",
     "tag_age_days",
-    "n_tag_posts",
-    "n_tag_posts_30d",
-    "n_tag_posts_365d"
+    "n_tag_posts as tag_post_count",
+    "n_tag_posts_30d as tag_post_count_30d",
+    "n_tag_posts_365d as tag_post_count_365d"
 )
 
 tags.show(5, vertical=True, truncate=False)
 save_table(tags, "tags")
+
+print("Ending execution")

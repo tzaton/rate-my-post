@@ -3,6 +3,7 @@ import os
 import re
 from datetime import datetime
 from pprint import pformat
+from statistics import mean
 
 import boto3
 import nltk
@@ -59,40 +60,89 @@ def lambda_handler(event, context):
         [w for w in nltk.word_tokenize(post_title) if re.search("[A-Za-z0-9]", w)])
 
     # user
-    forum_name = data["forumName"]
+    forum_name = data["forumName"].lower().replace(".", "-")
     user_id = data["userId"]
+    # get data from DynamoDB
+    user_data = dynamodb.get_item(
+        TableName='users',
+        Key={
+            'id': {
+                'S': f'{forum_name}:{user_id}'
+            }
+        },
+    ).get('Item', {})
+    user_vars = {
+        var: list(value_dict.values())[0] for var, value_dict in user_data.items()
+    }
+    user_display_name = user_vars.get("user_display_name", "")
 
-    # TODO
-    user_age_days = 0
-    user_website_flag = 0
-    user_location_flag = 0
-    user_about_me_flag = 0
-    user_badge_count = 0
-    user_badge_1_count = 0
-    user_badge_2_count = 0
-    user_badge_3_count = 0
-    user_post_count = 0
-    user_question_count = 0
-    user_answer_count = 0
-    user_first_post_flag = 0
-    user_first_question_flag = 0
-    user_answered_questions_count = 0
-    user_accepted_answers_count = 0
-    user_score = 0
-    user_question_score = 0
-    user_answer_score = 0
+    user_age_days = int(user_vars.get("user_age_days", 0))
+    user_website_flag = int(user_vars.get("user_website_flag", 0))
+    user_location_flag = int(user_vars.get("user_location_flag", 0))
+    user_about_me_flag = int(user_vars.get("user_about_me_flag", 0))
+    user_badge_count = int(user_vars.get("user_badge_count", 0))
+    user_badge_1_count = int(user_vars.get("user_badge_1_count", 0))
+    user_badge_2_count = int(user_vars.get("user_badge_2_count", 0))
+    user_badge_3_count = int(user_vars.get("user_badge_3_count", 0))
+    user_post_count = int(user_vars.get("user_post_count", 0))
+    user_question_count = int(user_vars.get("user_question_count", 0))
+    user_answer_count = int(user_vars.get("user_answer_count", 0))
+    user_first_post_flag = int(user_vars.get("user_first_post_flag", 1))
+    user_first_question_flag = int(
+        user_vars.get("user_first_question_flag", 1))
+    user_answered_questions_count = int(
+        user_vars.get("user_answered_questions_count", 0))
+    user_accepted_answers_count = int(
+        user_vars.get("user_accepted_answers_count", 0))
+    user_score = int(user_vars.get("user_score", 0))
+    user_question_score = int(user_vars.get("user_question_score", 0))
+    user_answer_score = int(user_vars.get("user_answer_score", 0))
 
     # tags
     post_tags = [t.strip() for t in data["postTags"].split(",")]
     post_tag_count = len(post_tags)
 
-    # TODO
-    tag_post_count_max = 0
-    tag_post_count_30d_max = 0
-    tag_post_count_365d_max = 0
-    tag_post_count_avg = 0
-    tag_post_count_30d_avg = 0
-    tag_post_count_365d_avg = 0
+    # get data from DynamoDB
+    tag_data = dynamodb.batch_get_item(
+        RequestItems={
+            'tags': {
+                'Keys': [
+                    {'id':
+                        {
+                            'S': f'{forum_name}:{t}'}
+                     }
+                    for t in post_tags
+                ]},
+        }
+    ).get('Responses').get('tags', [])
+    valid_tags = [list(t['id'].values())[0].split(":")[1] for t in tag_data]
+
+    if any(tag_data):
+        tag_post_count_max = max(
+            [int(list(t['tag_post_count'].values())[0]) for t in tag_data])
+        tag_post_count_30d_max = max(
+            [int(list(t['tag_post_count_30d'].values())[0]) for t in tag_data])
+        tag_post_count_365d_max = max(
+            [int(list(t['tag_post_count_365d'].values())[0]) for t in tag_data])
+        tag_post_count_avg = mean(
+            [int(list(t['tag_post_count'].values())[0]) for t in tag_data])
+        tag_post_count_30d_avg = mean(
+            [int(list(t['tag_post_count_30d'].values())[0]) for t in tag_data])
+        tag_post_count_365d_avg = mean(
+            [int(list(t['tag_post_count_365d'].values())[0]) for t in tag_data])
+        # tag_age_days_avg = mean(
+        #     [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
+        # tag_age_days_max = max(
+        #     [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
+    else:
+        tag_post_count_max = 0
+        tag_post_count_30d_max = 0
+        tag_post_count_365d_max = 0
+        tag_post_count_avg = 0
+        tag_post_count_30d_avg = 0
+        tag_post_count_365d_avg = 0
+        # tag_age_days_avg = 0
+        # tag_age_days_max = 0
 
     # Invoke endpoint
     payload = {"schema": {
@@ -334,10 +384,18 @@ def lambda_handler(event, context):
 
     output = response['Body'].read().decode().split(",")[1]
 
-    print(f"Model reponse (probability): {output}")
+    print(f"Model response (probability): {output}")
 
-    return {'statusCode': 200,
-            'headers': {'Content-Type': 'text/plain',
-                        'Access-Control-Allow-Origin': '*'},
-            'body': output
-            }
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+        },
+        'body': json.dumps({
+            "probability": output,
+            "user_name": user_display_name,
+            "tags": {t: True if t in valid_tags else False for t in post_tags}
+        }),
+        "isBase64Encoded": False
+    }
