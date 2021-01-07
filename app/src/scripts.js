@@ -64,7 +64,7 @@ $(document).ready(function () {
                     var tagResponse = "";
                     Object.keys(tags).forEach(function (t) {
                         if (tags[t] == false) {
-                            tagResponse += `Tag not found: ${t}<br>`
+                            tagResponse += `Tag not found: <i>${t}</i>.<br>`
                         }
                     })
                     if (tagResponse != "") {
