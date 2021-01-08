@@ -10,7 +10,9 @@ from diagrams.onprem.client import User
 from diagrams.onprem.compute import Server
 from diagrams.onprem.network import Internet
 
-with Diagram(name="", show=False, direction="LR", filename="setup/architecture") as diag:
+with Diagram(name="", show=False, direction="LR",
+             filename="setup/architecture",
+             graph_attr={"dpi": "300"}) as diag:
     with Cluster("Source"):
         source = Server("HTTP")
     with Cluster("Data load"):
