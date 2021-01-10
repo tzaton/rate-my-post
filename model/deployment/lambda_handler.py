@@ -39,7 +39,7 @@ def lambda_handler(event, context):
     post_body_clean = re.sub(
         " +", " ", re.sub("\n", " ", re.sub("<.*?>", "", post_body.replace("&nbsp;", " ")))).strip()
     post_body_clean_nocode = re.sub(
-        " +", " ", re.sub("\n", " ", re.sub("<.*?>", "", re.sub(r"(?s)<code>.*<\/code>", "", post_body.replace("&nbsp;", " "))))).strip()
+        " +", " ", re.sub("\n", " ", re.sub("<.*?>", "", re.sub(r"(?s)<code>.*?<\/code>", "", post_body.replace("&nbsp;", " "))))).strip()
 
     post_body_char_count = len(post_body_clean)
     post_body_nocode_char_count = len(post_body_clean_nocode)
@@ -64,16 +64,16 @@ def lambda_handler(event, context):
     post_body_sentence_count = len(sent_tokenize(post_body_clean_nocode))
     post_body_word_count = len(post_body_tokens_normalized)
     post_body_word_distinct_count = len(set(post_body_stem))
-    post_body_verb_perc = len([p for p in post_body_pos if p.startswith(
+    post_body_verb_perc = len([p for p in post_body_pos if p[1].startswith(
         "V")])/post_body_word_count if post_body_word_count > 0 else 0
-    post_body_noun_perc = len([p for p in post_body_pos if p.startswith(
+    post_body_noun_perc = len([p for p in post_body_pos if p[1].startswith(
         "N")])/post_body_word_count if post_body_word_count > 0 else 0
-    post_body_pronoun_perc = len([p for p in post_body_pos if p.startswith(
+    post_body_pronoun_perc = len([p for p in post_body_pos if p[1].startswith(
         "PR")])/post_body_word_count if post_body_word_count > 0 else 0
     post_body_adjective_perc = len(
-        [p for p in post_body_pos if p.startswith("J")])/post_body_word_count if post_body_word_count > 0 else 0
+        [p for p in post_body_pos if p[1].startswith("J")])/post_body_word_count if post_body_word_count > 0 else 0
     post_body_adverb_perc = len(
-        [p for p in post_body_pos if p.startswith("RB")])/post_body_word_count if post_body_word_count > 0 else 0
+        [p for p in post_body_pos if p[1].startswith("RB")])/post_body_word_count if post_body_word_count > 0 else 0
 
     # post title
     post_title = data["postTitle"]
@@ -89,19 +89,19 @@ def lambda_handler(event, context):
 
     post_title_word_count = len(post_title_tokens_normalized)
     post_title_word_distinct_count = len(set(post_title_stem))
-    post_title_verb_perc = len([p for p in post_title_pos if p.startswith(
+    post_title_verb_perc = len([p for p in post_title_pos if p[1].startswith(
         "V")])/post_title_word_count if post_title_word_count > 0 else 0
-    post_title_noun_perc = len([p for p in post_title_pos if p.startswith(
+    post_title_noun_perc = len([p for p in post_title_pos if p[1].startswith(
         "N")])/post_title_word_count if post_title_word_count > 0 else 0
-    post_title_pronoun_perc = len([p for p in post_title_pos if p.startswith(
+    post_title_pronoun_perc = len([p for p in post_title_pos if p[1].startswith(
         "PR")])/post_title_word_count if post_title_word_count > 0 else 0
     post_title_adjective_perc = len(
-        [p for p in post_title_pos if p.startswith("J")])/post_title_word_count if post_title_word_count > 0 else 0
+        [p for p in post_title_pos if p[1].startswith("J")])/post_title_word_count if post_title_word_count > 0 else 0
     post_title_adverb_perc = len(
-        [p for p in post_title_pos if p.startswith("RB")])/post_title_word_count if post_title_word_count > 0 else 0
+        [p for p in post_title_pos if p[1].startswith("RB")])/post_title_word_count if post_title_word_count > 0 else 0
 
     post_title_in_body_perc = len(set(post_title_stem).intersection(
-        set(post_body_stem)))/post_title_word_distinct_count
+        set(post_body_stem)))/post_title_word_distinct_count if post_title_word_distinct_count > 0 else 0
 
     # user
     forum_name = data["forumName"].lower().replace(".", "-")
@@ -189,21 +189,17 @@ def lambda_handler(event, context):
         tag_age_days_max = 0
 
     # forum
-    forum_data = dynamodb.get_item(
-        TableName='forums',
-        Key={
-            'id': {
-                'S': forum_name
-            }
-        },
-    ).get('Item')
-    forum_vars = {
-        var: list(value_dict.values())[0] for var, value_dict in forum_data.items()
-    }
-    forum_age_days = int(forum_vars['forum_age_days'])
-    forum_post_count = int(forum_vars['forum_post_count'])
-    forum_post_count_30d = int(forum_vars['forum_post_count_30d'])
-    forum_post_count_365d = int(forum_vars['forum_post_count_365d'])
+    forum_model_name = forum_name.replace("-", "_")+"_flag"
+    android_stackexchange_com_flag = 1 if forum_model_name == "android_stackexchange_com_flag" else 0
+    askubuntu_com_flag = 1 if forum_model_name == "askubuntu_com_flag" else 0
+    cs_stackexchange_com_flag = 1 if forum_model_name == "cs_stackexchange_com_flag" else 0
+    datascience_stackexchange_com_flag = 1 if forum_model_name == "datascience_stackexchange_com_flag" else 0
+    dba_stackexchange_com_flag = 1 if forum_model_name == "dba_stackexchange_com_flag" else 0
+    devops_stackexchange_com_flag = 1 if forum_model_name == "devops_stackexchange_com_flag" else 0
+    gamedev_stackexchange_com_flag = 1 if forum_model_name == "gamedev_stackexchange_com_flag" else 0
+    raspberrypi_stackexchange_com_flag = 1 if forum_model_name == "raspberrypi_stackexchange_com_flag" else 0
+    softwareengineering_stackexchange_com_flag = 1 if forum_model_name == "softwareengineering_stackexchange_com_flag" else 0
+    unix_stackexchange_com_flag = 1 if forum_model_name == "unix_stackexchange_com_flag" else 0
 
     # Invoke endpoint
     payload = {"schema": {
@@ -269,7 +265,7 @@ def lambda_handler(event, context):
                 "type": "int"
             },
             {
-                "name": "post_body_sent_count",
+                "name": "post_body_sentence_count",
                 "type": "int"
             },
             {
@@ -277,8 +273,60 @@ def lambda_handler(event, context):
                 "type": "int"
             },
             {
+                "name": "post_body_word_distinct_count",
+                "type": "int"
+            },
+            {
+                "name": "post_body_verb_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_body_noun_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_body_pronoun_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_body_adjective_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_body_adverb_perc",
+                "type": "double"
+            },
+            {
                 "name": "post_title_word_count",
                 "type": "int"
+            },
+            {
+                "name": "post_title_word_distinct_count",
+                "type": "int"
+            },
+            {
+                "name": "post_title_verb_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_title_noun_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_title_pronoun_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_title_adjective_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_title_adverb_perc",
+                "type": "double"
+            },
+            {
+                "name": "post_title_in_body_perc",
+                "type": "double"
             },
             {
                 "name": "tag_post_count_max",
@@ -293,6 +341,10 @@ def lambda_handler(event, context):
                 "type": "long"
             },
             {
+                "name": "tag_age_days_max",
+                "type": "int"
+            },
+            {
                 "name": "tag_post_count_avg",
                 "type": "double"
             },
@@ -302,6 +354,10 @@ def lambda_handler(event, context):
             },
             {
                 "name": "tag_post_count_365d_avg",
+                "type": "double"
+            },
+            {
+                "name": "tag_age_days_avg",
                 "type": "double"
             },
             {
@@ -377,6 +433,46 @@ def lambda_handler(event, context):
                 "type": "long"
             },
             {
+                "name": "android_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "askubuntu_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "cs_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "datascience_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "dba_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "devops_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "gamedev_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "raspberrypi_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "softwareengineering_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
+                "name": "unix_stackexchange_com_flag",
+                "type": "int"
+            },
+            {
                 "name": "y",
                 "type": "int"
             }
@@ -406,13 +502,28 @@ def lambda_handler(event, context):
         post_tag_count,
         post_body_sentence_count,
         post_body_word_count,
+        post_body_word_distinct_count,
+        post_body_verb_perc,
+        post_body_noun_perc,
+        post_body_pronoun_perc,
+        post_body_adjective_perc,
+        post_body_adverb_perc,
         post_title_word_count,
+        post_title_word_distinct_count,
+        post_title_verb_perc,
+        post_title_noun_perc,
+        post_title_pronoun_perc,
+        post_title_adjective_perc,
+        post_title_adverb_perc,
+        post_title_in_body_perc,
         tag_post_count_max,
         tag_post_count_30d_max,
         tag_post_count_365d_max,
+        tag_age_days_max,
         tag_post_count_avg,
         tag_post_count_30d_avg,
         tag_post_count_365d_avg,
+        tag_age_days_avg,
         user_age_days,
         user_website_flag,
         user_location_flag,
@@ -431,6 +542,16 @@ def lambda_handler(event, context):
         user_score,
         user_question_score,
         user_answer_score,
+        android_stackexchange_com_flag,
+        askubuntu_com_flag,
+        cs_stackexchange_com_flag,
+        datascience_stackexchange_com_flag,
+        dba_stackexchange_com_flag,
+        devops_stackexchange_com_flag,
+        gamedev_stackexchange_com_flag,
+        raspberrypi_stackexchange_com_flag,
+        softwareengineering_stackexchange_com_flag,
+        unix_stackexchange_com_flag,
         0
     ]
     }

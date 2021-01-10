@@ -33,7 +33,7 @@ def save_table(df, table_name):
 
 
 spark.sql(f"""
-use default
+use {input_db}
 """)
 
 # question data
@@ -84,7 +84,7 @@ select
 
     p.body,
     trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(p.body, "&nbsp;", " "), "<.*?>", ""), "\n", " "), " +", " ")) as body_clean,
-    trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(p.body, "&nbsp;", " "), "(?s)<code>.*<\/code>", ""), "<.*?>", ""), "\n", " "), " +", " ")) as body_clean_nocode,
+    trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(p.body, "&nbsp;", " "), "(?s)<code>.*?<\/code>", ""), "<.*?>", ""), "\n", " "), " +", " ")) as body_clean_nocode,
     p.title,
     p.tags,
     size(p.tags) as n_tags,
@@ -307,44 +307,12 @@ select
 """)
 save_table(tags, "tags")
 
-
-# forum data
-forums = spark.sql("""
-        select
-            p.dataset_name,
-            p.id as post_id,
-            datediff(p.creation_date, f.start_date) as forum_age_days,
-            count(p2.id) as n_forum_posts,
-            count(case when datediff(p.creation_date, p2.creation_date) < 30 then p2.id end) as n_forum_posts_30d,
-            count(case when datediff(p.creation_date, p2.creation_date) < 365 then p2.id end) as n_forum_posts_365d
-        from posts p
-        left join posts p2
-            on p.dataset_name = p2.dataset_name
-            and p2.creation_date < p.creation_date
-        join (select
-                p.dataset_name,
-                min(p.creation_date) as start_date
-            from posts p
-            group by
-                p.dataset_name) f
-            on p.dataset_name = f.dataset_name
-        where p.post_type_id = 1
-        group by
-            p.dataset_name,
-            p.id,
-            p.creation_date,
-            f.start_date
-""")\
-    .repartition(80)
-save_table(forums, "forums")
-
-
 # question data - NLP features
 questions_nlp_base = spark.sql("""
 select
     p.dataset_name,
     p.id as post_id,
-    trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(p.body, "&nbsp;", " "), "(?s)<code>.*<\/code>", ""), "<.*?>", ""), "\n", " "), " +", " ")) as body_clean_nocode,
+    trim(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(p.body, "&nbsp;", " "), "(?s)<code>.*?<\/code>", ""), "<.*?>", ""), "\n", " "), " +", " ")) as body_clean_nocode,
     p.title
 from posts p
 where p.post_type_id = 1
@@ -470,8 +438,11 @@ questions_nlp = pipelineTitle.fit(nlp1).transform(nlp1)\
     .repartition(80)
 save_table(questions_nlp, "questions_nlp")
 
-
 # Final model dataset
+spark.sql(f"""
+use {output_db}
+""")
+
 model_data = spark.sql("""
 select
     -- features
@@ -496,22 +467,22 @@ select
     q.title_n_characters as post_title_char_count,
     q.tags as post_tags,
     q.n_tags as post_tag_count,
-    q2.body_n_sentences as post_body_sentence_count,
-    q2.body_n_words as post_body_word_count,
-    q2.body_n_distinct_words as post_body_word_distinct_count,
-    q2.body_n_verbs/q2.body_n_words as post_body_verb_perc,
-    q2.body_n_nouns/q2.body_n_words as post_body_noun_perc,
-    q2.body_n_pronouns/q2.body_n_words as post_body_pronoun_perc,
-    q2.body_n_adjectives/q2.body_n_words as post_body_adjective_perc,
-    q2.body_n_adverbs/q2.body_n_words as post_body_adverb_perc,
-    q2.title_n_words as post_title_word_count,
-    q2.title_n_distinct_words as post_title_word_distinct_count,
-    q2.title_n_verbs/q2.title_n_words as post_title_verb_perc,
-    q2.title_n_nouns/q2.title_n_words as post_title_noun_perc,
-    q2.title_n_pronouns/q2.title_n_words as post_title_pronoun_perc,
-    q2.title_n_adjectives/q2.title_n_words as post_title_adjective_perc,
-    q2.title_n_adverbs/q2.title_n_words as post_title_adverb_perc,
-    q2.title_in_body_perc as post_title_in_body_perc,
+    coalesce(q2.body_n_sentences, 0) as post_body_sentence_count,
+    coalesce(q2.body_n_words, 0) as post_body_word_count,
+    coalesce(q2.body_n_distinct_words, 0) as post_body_word_distinct_count,
+    coalesce(q2.body_n_verbs/q2.body_n_words, 0) as post_body_verb_perc,
+    coalesce(q2.body_n_nouns/q2.body_n_words, 0) as post_body_noun_perc,
+    coalesce(q2.body_n_pronouns/q2.body_n_words, 0) as post_body_pronoun_perc,
+    coalesce(q2.body_n_adjectives/q2.body_n_words, 0) as post_body_adjective_perc,
+    coalesce(q2.body_n_adverbs/q2.body_n_words, 0) as post_body_adverb_perc,
+    coalesce(q2.title_n_words, 0) as post_title_word_count,
+    coalesce(q2.title_n_distinct_words, 0) as post_title_word_distinct_count,
+    coalesce(q2.title_n_verbs/q2.title_n_words, 0) as post_title_verb_perc,
+    coalesce(q2.title_n_nouns/q2.title_n_words, 0) as post_title_noun_perc,
+    coalesce(q2.title_n_pronouns/q2.title_n_words, 0) as post_title_pronoun_perc,
+    coalesce(q2.title_n_adjectives/q2.title_n_words, 0) as post_title_adjective_perc,
+    coalesce(q2.title_n_adverbs/q2.title_n_words, 0) as post_title_adverb_perc,
+    coalesce(q2.title_in_body_perc, 0) as post_title_in_body_perc,
     t.n_tag_posts_max as tag_post_count_max,
     t.n_tag_posts_max_30d as tag_post_count_30d_max,
     t.n_tag_posts_max_365d as tag_post_count_365d_max,
@@ -520,10 +491,6 @@ select
     t.n_tag_posts_avg_30d as tag_post_count_30d_avg,
     t.n_tag_posts_avg_365d as tag_post_count_365d_avg,
     t.tag_age_days_avg,
-    f.forum_age_days,
-    f.n_forum_posts as forum_post_count,
-    f.n_forum_posts_30d as forum_post_count_30d,
-    f.n_forum_posts_365d as forum_post_count_365d,
     us.user_id,
     us.user_age_days,
     us.user_website_flag,
@@ -574,17 +541,24 @@ join user_history uh
 join tags t
     on q.dataset_name = t.dataset_name
     and q.post_id = t.post_id
-join forums f
-    on q.dataset_name = f.dataset_name
-    and q.post_id = f.post_id
 join answers a
     on q.dataset_name = a.dataset_name
     and q.post_id = a.post_id
 join questions_nlp q2
     on q.dataset_name = q2.dataset_name
     and q.post_id = q2.post_id
-where q.body_n_characters > 0
+where
+    q.body_n_characters > 0
+    and q.title_n_characters > 0
 """)
+
+# Forum - binary columns
+forums = sorted(model_data.select(
+    "dataset_name").distinct().rdd.map(lambda x: x[0]).collect())
+
+model_data = model_data\
+    .select(*(model_data.columns) + [f.when(f.col("dataset_name") == x, 1).otherwise(0).alias(f"{x.replace('-', '_')}_flag") for x in forums])
+
 save_table(model_data, "model_data")
 
 print("Ending execution")
