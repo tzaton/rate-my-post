@@ -75,6 +75,8 @@ $(document).ready(function () {
                 },
                 error: function () {
                     alert("ERROR");
+                    var result = `<div class="card bg-light"><div class="card-body">Estimation is not available at the moment. Please check <a href=https://github.com/tzaton/rate-my-post>GitHub</a>.</div></div>`;
+                    $("#postResponse").html(result);
                 }
             });
         }
