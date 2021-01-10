@@ -6,11 +6,18 @@ from pprint import pformat
 from statistics import mean
 
 import boto3
-import nltk
+from nltk import pos_tag
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from nltk.tokenize import TweetTokenizer, sent_tokenize
 
 ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
 sagemaker = boto3.client('runtime.sagemaker')
 dynamodb = boto3.client('dynamodb')
+
+tokenizer = TweetTokenizer()
+stemmer = PorterStemmer()
+stop_words = set(stopwords.words('english'))
 
 
 def lambda_handler(event, context):
@@ -47,17 +54,54 @@ def lambda_handler(event, context):
     post_body_bold_flag = 1 if (re.search(
         r"(?s)<strong>.*<\/strong>", post_body) or re.search(
         r"(?s)<b>.*<\/b>", post_body)) else 0
-    post_body_sent_count = len(nltk.sent_tokenize(post_body_clean_nocode))
-    post_body_word_count = len(
-        [w for w in nltk.word_tokenize(post_body_clean_nocode) if re.search("[A-Za-z0-9]", w)])
+
+    post_body_tokens_normalized = [re.sub('[^A-Za-z0-9\']', '', w)
+                                   for w in tokenizer.tokenize(post_body_clean_nocode) if re.sub('[^A-Za-z0-9\']', '', w)]
+    post_body_pos = pos_tag(post_body_tokens_normalized)
+    post_body_stem = [stemmer.stem(
+        w) for w in post_body_tokens_normalized if w.lower() not in stop_words]
+
+    post_body_sentence_count = len(sent_tokenize(post_body_clean_nocode))
+    post_body_word_count = len(post_body_tokens_normalized)
+    post_body_word_distinct_count = len(set(post_body_stem))
+    post_body_verb_perc = len([p for p in post_body_pos if p.startswith(
+        "V")])/post_body_word_count if post_body_word_count > 0 else 0
+    post_body_noun_perc = len([p for p in post_body_pos if p.startswith(
+        "N")])/post_body_word_count if post_body_word_count > 0 else 0
+    post_body_pronoun_perc = len([p for p in post_body_pos if p.startswith(
+        "PR")])/post_body_word_count if post_body_word_count > 0 else 0
+    post_body_adjective_perc = len(
+        [p for p in post_body_pos if p.startswith("J")])/post_body_word_count if post_body_word_count > 0 else 0
+    post_body_adverb_perc = len(
+        [p for p in post_body_pos if p.startswith("RB")])/post_body_word_count if post_body_word_count > 0 else 0
 
     # post title
     post_title = data["postTitle"]
     post_title_upper_flag = 1 if post_title[0].isupper() else 0
     post_title_question_flag = 1 if post_title.endswith("?") else 0
     post_title_char_count = len(post_title)
-    post_title_word_count = len(
-        [w for w in nltk.word_tokenize(post_title) if re.search("[A-Za-z0-9]", w)])
+
+    post_title_tokens_normalized = [re.sub('[^A-Za-z0-9\']', '', w)
+                                    for w in tokenizer.tokenize(post_title) if re.sub('[^A-Za-z0-9\']', '', w)]
+    post_title_pos = pos_tag(post_title_tokens_normalized)
+    post_title_stem = [stemmer.stem(
+        w) for w in post_title_tokens_normalized if w.lower() not in stop_words]
+
+    post_title_word_count = len(post_title_tokens_normalized)
+    post_title_word_distinct_count = len(set(post_title_stem))
+    post_title_verb_perc = len([p for p in post_title_pos if p.startswith(
+        "V")])/post_title_word_count if post_title_word_count > 0 else 0
+    post_title_noun_perc = len([p for p in post_title_pos if p.startswith(
+        "N")])/post_title_word_count if post_title_word_count > 0 else 0
+    post_title_pronoun_perc = len([p for p in post_title_pos if p.startswith(
+        "PR")])/post_title_word_count if post_title_word_count > 0 else 0
+    post_title_adjective_perc = len(
+        [p for p in post_title_pos if p.startswith("J")])/post_title_word_count if post_title_word_count > 0 else 0
+    post_title_adverb_perc = len(
+        [p for p in post_title_pos if p.startswith("RB")])/post_title_word_count if post_title_word_count > 0 else 0
+
+    post_title_in_body_perc = len(set(post_title_stem).intersection(
+        set(post_body_stem)))/post_title_word_distinct_count
 
     # user
     forum_name = data["forumName"].lower().replace(".", "-")
@@ -130,10 +174,10 @@ def lambda_handler(event, context):
             [int(list(t['tag_post_count_30d'].values())[0]) for t in tag_data])
         tag_post_count_365d_avg = mean(
             [int(list(t['tag_post_count_365d'].values())[0]) for t in tag_data])
-        # tag_age_days_avg = mean(
-        #     [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
-        # tag_age_days_max = max(
-        #     [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
+        tag_age_days_avg = mean(
+            [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
+        tag_age_days_max = max(
+            [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
     else:
         tag_post_count_max = 0
         tag_post_count_30d_max = 0
@@ -141,8 +185,25 @@ def lambda_handler(event, context):
         tag_post_count_avg = 0
         tag_post_count_30d_avg = 0
         tag_post_count_365d_avg = 0
-        # tag_age_days_avg = 0
-        # tag_age_days_max = 0
+        tag_age_days_avg = 0
+        tag_age_days_max = 0
+
+    # forum
+    forum_data = dynamodb.get_item(
+        TableName='forums',
+        Key={
+            'id': {
+                'S': forum_name
+            }
+        },
+    ).get('Item')
+    forum_vars = {
+        var: list(value_dict.values())[0] for var, value_dict in forum_data.items()
+    }
+    forum_age_days = int(forum_vars['forum_age_days'])
+    forum_post_count = int(forum_vars['forum_post_count'])
+    forum_post_count_30d = int(forum_vars['forum_post_count_30d'])
+    forum_post_count_365d = int(forum_vars['forum_post_count_365d'])
 
     # Invoke endpoint
     payload = {"schema": {
@@ -343,7 +404,7 @@ def lambda_handler(event, context):
         post_title_question_flag,
         post_title_char_count,
         post_tag_count,
-        post_body_sent_count,
+        post_body_sentence_count,
         post_body_word_count,
         post_title_word_count,
         tag_post_count_max,

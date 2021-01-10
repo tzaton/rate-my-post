@@ -34,8 +34,16 @@ aws s3 website s3://"$APP_BUCKET_NAME"/ --index-document index.html --error-docu
 # Upload jars
 JAR_DIR=$(cat setup/stack.yaml | cfn-flip | jq -r '.Mappings.DirMap.jars.name')
 
-wget -P jars https://repo1.maven.org/maven2/com/databricks/spark-xml_2.11/0.11.0/spark-xml_2.11-0.11.0.jar
-wget -P jars https://repo1.maven.org/maven2/com/johnsnowlabs/nlp/spark-nlp_2.11/2.6.2/spark-nlp_2.11-2.6.2.jar
-wget -P jars https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-core/1.11.930/aws-java-sdk-core-1.11.930.jar
+wget -P jars -N https://repo1.maven.org/maven2/com/databricks/spark-xml_2.11/0.11.0/spark-xml_2.11-0.11.0.jar
+wget -P jars -N https://repo1.maven.org/maven2/com/johnsnowlabs/nlp/spark-nlp_2.11/2.6.2/spark-nlp_2.11-2.6.2.jar
+wget -P jars -N https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-core/1.11.930/aws-java-sdk-core-1.11.930.jar
+wget -P jars -N https://s3.amazonaws.com/auxdata.johnsnowlabs.com/public/spark-nlp-assembly-2.6.2.jar
 
 aws s3 cp jars s3://"$BUCKET_NAME"/"$JAR_DIR" --recursive
+
+# Extra files
+# Spark NLP models
+wget -N https://s3.amazonaws.com/auxdata.johnsnowlabs.com/public/models/pos_anc_en_2.0.2_2.4_1556659930154.zip
+unzip pos_anc_en_2.0.2_2.4_1556659930154.zip -d pos_anc_en_2.0.2_2.4_1556659930154
+aws s3 cp pos_anc_en_2.0.2_2.4_1556659930154 s3://"$BUCKET_NAME"/pos_anc_en_2.0.2_2.4_1556659930154 --recursive
+rm -r pos_anc_en_2.0.2_2.4_1556659930154

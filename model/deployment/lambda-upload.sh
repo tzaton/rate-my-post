@@ -15,7 +15,7 @@ virtualenv "$LAMBDA_VIRTUALENV"
 source "$LAMBDA_VIRTUALENV"/bin/activate
 pip install nltk
 mkdir "$LAMBDA_VIRTUALENV"/nltk_data
-python -m nltk.downloader -d "$LAMBDA_VIRTUALENV"/lib/python3.7/site-packages/nltk_data punkt
+python -m nltk.downloader -d "$LAMBDA_VIRTUALENV"/lib/python3.7/site-packages/nltk_data punkt averaged_perceptron_tagger stopwords
 deactivate
 cd "$LAMBDA_VIRTUALENV"/lib/python3.7/site-packages
 zip -r ../../../../"$LAMBDA_NAME".zip .

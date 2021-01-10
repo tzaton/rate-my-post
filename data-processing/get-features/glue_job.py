@@ -128,9 +128,9 @@ select
     p.tag,
     datediff(from_unixtime({current_timestamp}), min(p.creation_date)) as tag_age_days,
     count(*) as n_tag_posts,
-    count(case when datediff(from_unixtime({current_timestamp}), p.creation_date) < 30 then p.tag end) as n_tag_posts_30d,
-    count(case when datediff(from_unixtime({current_timestamp}), p.creation_date) < 365 then p.tag end) as n_tag_posts_365d
-from (select p.id, p.dataset_name, p.creation_date, explode(p.tags) as tag from posts p) p
+    count(case when datediff(from_unixtime({current_timestamp}), p.creation_date) < 30 then p.id end) as n_tag_posts_30d,
+    count(case when datediff(from_unixtime({current_timestamp}), p.creation_date) < 365 then p.id end) as n_tag_posts_365d
+from (select p.id, p.dataset_name, p.creation_date, explode(p.tags) as tag from posts p where p.post_type_id = 1) p
 group by
     p.dataset_name,
     p.tag
@@ -145,5 +145,28 @@ group by
 
 tags.show(5, vertical=True, truncate=False)
 save_table(tags, "tags")
+
+# forums
+forums = spark.sql(f"""
+select
+    p.dataset_name,
+    datediff(from_unixtime({current_timestamp}), min(p.creation_date)) as forum_age_days,
+    count(*) as n_forum_posts,
+    count(case when datediff(from_unixtime({current_timestamp}), p.creation_date) < 30 then p.id end) as n_forum_posts_30d,
+    count(case when datediff(from_unixtime({current_timestamp}), p.creation_date) < 365 then p.id end) as n_forum_posts_365d
+from posts p
+group by
+    p.dataset_name
+""")\
+    .selectExpr(
+    "dataset_name as id",
+    "forum_age_days",
+    "n_forum_posts as forum_post_count",
+    "n_forum_posts_30d as forum_post_count_30d",
+    "n_forum_posts_365d as forum_post_count_365d"
+)
+
+forums.show(5, vertical=True, truncate=False)
+save_table(forums, "forums")
 
 print("Ending execution")

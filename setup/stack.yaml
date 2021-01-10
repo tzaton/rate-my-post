@@ -342,7 +342,7 @@ Resources:
       Name: !FindInMap [TaskMap, parse, name]
       NumberOfWorkers: 10
       Role: !GetAtt GlueRoleS3.Arn
-      Timeout: 60
+      Timeout: 120
       WorkerType: G.1X
     DependsOn:
       - GlueRoleS3
@@ -373,10 +373,48 @@ Resources:
       Name: !FindInMap [TaskMap, createFeatures, name]
       NumberOfWorkers: 10
       Role: !GetAtt GlueRoleS3DynamoDB.Arn
-      Timeout: 60
+      Timeout: 120
       WorkerType: G.1X
     DependsOn:
       - GlueRoleS3DynamoDB
+      - Bucket
+
+  FeatureEngineeringJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Command:
+        Name: glueetl
+        PythonVersion: 3
+        ScriptLocation: !Sub
+          - s3://${bucket_name}/${glue_dir}/${job_name}/glue_job.py
+          - bucket_name: !Ref PreBucket
+            glue_dir: !FindInMap [DirMap, glue, name]
+            job_name: !FindInMap [TaskMap, featureEngineering, name]
+      DefaultArguments:
+        --enable-glue-datacatalog: ""
+        --enable-continuous-cloudwatch-log: true
+        --enable-continuous-log-filter: true
+        --job-language: python
+        --extra-jars: !Sub
+          - s3://${bucket_name}/${jar_dir}/spark-nlp-assembly-2.6.2.jar
+          - bucket_name: !Ref PreBucket
+            jar_dir: !FindInMap [DirMap, jars, name]
+        --additional-python-modules: spark-nlp==2.6.2
+        --input_db: default
+        --output_db: training
+        --model_bucket: !Ref PreBucket
+      Description: Feature engineering for model training
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+      GlueVersion: 2.0
+      MaxRetries: 0
+      Name: !FindInMap [TaskMap, featureEngineering, name]
+      NumberOfWorkers: 10
+      Role: !GetAtt GlueRoleS3.Arn
+      Timeout: 480
+      WorkerType: G.1X
+    DependsOn:
+      - GlueRoleS3
       - Bucket
 
   DataProcessingWorkflow:
@@ -390,6 +428,7 @@ Resources:
     Properties:
       Actions:
         - JobName: !Ref GetFeaturesJob
+        - JobName: !Ref FeatureEngineeringJob
       StartOnCreation: true
       Name: trigger
       Predicate:
