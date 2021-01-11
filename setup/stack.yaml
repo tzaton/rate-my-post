@@ -1,17 +1,17 @@
 AWSTemplateFormatVersion: 2010-09-09
 
-Description: Setup infrastructure for rate-my-post project
+Description: Setup infrastructure for Rate My Post project
 
 Parameters:
   ProjectName:
     Type: String
-    Default: rate-my-post
+    Default: ratemypost
   PreBucket:
     Type: String
-    Default: rate-my-post-pre
+    Default: ratemypost-pre
   AppBucket:
     Type: String
-    Default: rate-my-post-app
+    Default: ratemypost-app
 
 Mappings:
   TaskMap:
@@ -323,6 +323,8 @@ Resources:
             job_name: !FindInMap [TaskMap, parse, name]
       DefaultArguments:
         --enable-glue-datacatalog: ""
+        --enable-metrics: ""
+        --enable-spark-ui: true
         --enable-continuous-cloudwatch-log: true
         --enable-continuous-log-filter: true
         --job-language: python
@@ -340,7 +342,7 @@ Resources:
       GlueVersion: 2.0
       MaxRetries: 0
       Name: !FindInMap [TaskMap, parse, name]
-      NumberOfWorkers: 10
+      NumberOfWorkers: 4
       Role: !GetAtt GlueRoleS3.Arn
       Timeout: 120
       WorkerType: G.1X
@@ -361,6 +363,8 @@ Resources:
             job_name: !FindInMap [TaskMap, createFeatures, name]
       DefaultArguments:
         --enable-glue-datacatalog: ""
+        --enable-metrics: ""
+        --enable-spark-ui: true
         --enable-continuous-cloudwatch-log: true
         --enable-continuous-log-filter: true
         --job-language: python
@@ -371,7 +375,7 @@ Resources:
       GlueVersion: 2.0
       MaxRetries: 0
       Name: !FindInMap [TaskMap, createFeatures, name]
-      NumberOfWorkers: 10
+      NumberOfWorkers: 4
       Role: !GetAtt GlueRoleS3DynamoDB.Arn
       Timeout: 120
       WorkerType: G.1X
@@ -392,6 +396,8 @@ Resources:
             job_name: !FindInMap [TaskMap, featureEngineering, name]
       DefaultArguments:
         --enable-glue-datacatalog: ""
+        --enable-metrics: ""
+        --enable-spark-ui: true
         --enable-continuous-cloudwatch-log: true
         --enable-continuous-log-filter: true
         --job-language: python
@@ -409,7 +415,7 @@ Resources:
       GlueVersion: 2.0
       MaxRetries: 0
       Name: !FindInMap [TaskMap, featureEngineering, name]
-      NumberOfWorkers: 10
+      NumberOfWorkers: 4
       Role: !GetAtt GlueRoleS3.Arn
       Timeout: 480
       WorkerType: G.1X

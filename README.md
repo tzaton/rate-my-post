@@ -7,11 +7,11 @@ Built on AWS.
 Data used comes from [Stack Exchange Data Dump](https://archive.org/details/stackexchange). Stack Exchange data is licensed under [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/legalcode).
 
 ## Web application
-End user interface is provided at http://rate-my-post-app.s3-website-us-east-1.amazonaws.com/.
+End user interface is provided at http://ratemypost-app.s3-website-us-east-1.amazonaws.com/.
 
 >Note: Underlying AWS Sagemaker model is not deployed currently due to cost saving, so predictions won't be generated. Please contact me if you would like to test it in action.
 
 ## Architecture
 ![Architecture](setup/architecture.png?raw=true "Architecture")
 
-Most of the architecture elements are defined in the [Cloudformation template](setup/stack.yaml). 
+Most of the system components are defined in the [Cloudformation template](setup/stack.yaml).
