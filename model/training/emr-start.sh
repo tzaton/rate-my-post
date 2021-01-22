@@ -15,7 +15,7 @@ BOOTSTRAP_PATH="$BUCKET_NAME"/bootstrap.sh
 aws emr create-cluster \
     --applications Name=Hadoop Name=Livy Name=JupyterEnterpriseGateway Name=Spark \
     --release-label emr-5.32.0 \
-    --ec2-attributes '{"InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-0f67eb2e","EmrManagedSlaveSecurityGroup":"sg-0e0d4f0cea3180c68","EmrManagedMasterSecurityGroup":"sg-0bee41df50951db6a"}' \
+    --ec2-attributes '{"InstanceProfile":"EMR_EC2_DefaultRole","SubnetId":"subnet-7bacf136","EmrManagedSlaveSecurityGroup":"sg-042d0cfc1c2a09aba","EmrManagedMasterSecurityGroup":"sg-0745c2dda111d4efc"}' \
     --instance-groups '[{"InstanceCount":2,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"CORE","InstanceType":"m5.xlarge","Name":"Core - 2"},{"InstanceCount":1,"EbsConfiguration":{"EbsBlockDeviceConfigs":[{"VolumeSpecification":{"SizeInGB":32,"VolumeType":"gp2"},"VolumesPerInstance":2}]},"InstanceGroupType":"MASTER","InstanceType":"m5.xlarge","Name":"Master - 1"}]' \
     --auto-scaling-role EMR_AutoScaling_DefaultRole \
     --service-role EMR_DefaultRole \
