@@ -124,12 +124,10 @@ def lambda_handler(event, context):
     user_website_flag = int(user_vars.get("user_website_flag", 0))
     user_location_flag = int(user_vars.get("user_location_flag", 0))
     user_about_me_flag = int(user_vars.get("user_about_me_flag", 0))
-    user_badge_count = int(user_vars.get("user_badge_count", 0))
     user_badge_1_count = int(user_vars.get("user_badge_1_count", 0))
     user_badge_2_count = int(user_vars.get("user_badge_2_count", 0))
     user_badge_3_count = int(user_vars.get("user_badge_3_count", 0))
     user_post_count = int(user_vars.get("user_post_count", 0))
-    user_question_count = int(user_vars.get("user_question_count", 0))
     user_answer_count = int(user_vars.get("user_answer_count", 0))
     user_first_post_flag = int(user_vars.get("user_first_post_flag", 1))
     user_first_question_flag = int(
@@ -162,12 +160,6 @@ def lambda_handler(event, context):
     valid_tags = [list(t['id'].values())[0].split(":")[1] for t in tag_data]
 
     if any(tag_data):
-        tag_post_count_max = max(
-            [int(list(t['tag_post_count'].values())[0]) for t in tag_data])
-        tag_post_count_30d_max = max(
-            [int(list(t['tag_post_count_30d'].values())[0]) for t in tag_data])
-        tag_post_count_365d_max = max(
-            [int(list(t['tag_post_count_365d'].values())[0]) for t in tag_data])
         tag_post_count_avg = mean(
             [int(list(t['tag_post_count'].values())[0]) for t in tag_data])
         tag_post_count_30d_avg = mean(
@@ -176,17 +168,11 @@ def lambda_handler(event, context):
             [int(list(t['tag_post_count_365d'].values())[0]) for t in tag_data])
         tag_age_days_avg = mean(
             [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
-        tag_age_days_max = max(
-            [int(list(t['tag_age_days'].values())[0]) for t in tag_data])
     else:
-        tag_post_count_max = 0
-        tag_post_count_30d_max = 0
-        tag_post_count_365d_max = 0
         tag_post_count_avg = 0
         tag_post_count_30d_avg = 0
         tag_post_count_365d_avg = 0
         tag_age_days_avg = 0
-        tag_age_days_max = 0
 
     # forum
     forum_model_name = forum_name.replace("-", "_")+"_flag"
@@ -269,10 +255,6 @@ def lambda_handler(event, context):
                 "type": "int"
             },
             {
-                "name": "post_body_word_count",
-                "type": "int"
-            },
-            {
                 "name": "post_body_word_distinct_count",
                 "type": "int"
             },
@@ -329,22 +311,6 @@ def lambda_handler(event, context):
                 "type": "double"
             },
             {
-                "name": "tag_post_count_max",
-                "type": "long"
-            },
-            {
-                "name": "tag_post_count_30d_max",
-                "type": "long"
-            },
-            {
-                "name": "tag_post_count_365d_max",
-                "type": "long"
-            },
-            {
-                "name": "tag_age_days_max",
-                "type": "int"
-            },
-            {
                 "name": "tag_post_count_avg",
                 "type": "double"
             },
@@ -377,10 +343,6 @@ def lambda_handler(event, context):
                 "type": "int"
             },
             {
-                "name": "user_badge_count",
-                "type": "long"
-            },
-            {
                 "name": "user_badge_1_count",
                 "type": "long"
             },
@@ -394,10 +356,6 @@ def lambda_handler(event, context):
             },
             {
                 "name": "user_post_count",
-                "type": "long"
-            },
-            {
-                "name": "user_question_count",
                 "type": "long"
             },
             {
@@ -501,7 +459,6 @@ def lambda_handler(event, context):
         post_title_char_count,
         post_tag_count,
         post_body_sentence_count,
-        post_body_word_count,
         post_body_word_distinct_count,
         post_body_verb_perc,
         post_body_noun_perc,
@@ -516,10 +473,6 @@ def lambda_handler(event, context):
         post_title_adjective_perc,
         post_title_adverb_perc,
         post_title_in_body_perc,
-        tag_post_count_max,
-        tag_post_count_30d_max,
-        tag_post_count_365d_max,
-        tag_age_days_max,
         tag_post_count_avg,
         tag_post_count_30d_avg,
         tag_post_count_365d_avg,
@@ -528,12 +481,10 @@ def lambda_handler(event, context):
         user_website_flag,
         user_location_flag,
         user_about_me_flag,
-        user_badge_count,
         user_badge_1_count,
         user_badge_2_count,
         user_badge_3_count,
         user_post_count,
-        user_question_count,
         user_answer_count,
         user_first_post_flag,
         user_first_question_flag,
