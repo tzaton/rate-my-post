@@ -30,12 +30,12 @@ var baseUrl = `https://${apiId}.execute-api.${region}.amazonaws.com/${stageName}
 $(document).ready(function () {
     $("#submitPost").click(function (event) {
         event.preventDefault();
-        $("#postResponse").html('<div class="text-center"><i class="fa fa-spinner fa-pulse fa-2x fa-fw"></i></div>');
         var form = $("#userForm")[0];
         if (form.checkValidity() === false) {
             event.stopPropagation();
         }
         else {
+            $("#postResponse").html('<div class="text-center"><i class="fa fa-spinner fa-pulse fa-2x fa-fw"></i></div>');
             var inputData = {
                 "forumName": $("#forumName").val(),
                 "userId": $("#userId").val(),
@@ -45,6 +45,8 @@ $(document).ready(function () {
                 "postTime": $("#postTime").val(),
                 "postDate": $("#postDate").val(),
             };
+
+            var dateStart = new Date();
 
             $.ajax({
                 url: baseUrl,
@@ -71,7 +73,10 @@ $(document).ready(function () {
                     if (tagResponse != "") {
                         tagResponse = `<small class="text-muted">${tagResponse}</small>`
                     }
-                    var result = `<div class="card bg-light"><div class="card-body">${userOutput}<br>${tagResponse}<br>Estimated probability of your question receiving accepted answer within 7 days is <b>~${probOutput}</b></div></div>`;
+                    var dateEnd = new Date();
+                    var executionTime = (dateEnd - dateStart) / 1000;
+                    var timeOutput = `<small class="text-muted">Execution time: ${executionTime} s</small>`;
+                    var result = `<div class="card bg-light"><div class="card-body">${userOutput}<br>${tagResponse}<br>Estimated probability of your question receiving accepted answer within 7 days is <b>~${probOutput}</b><br><br>${timeOutput}</div></div>`;
                     $("#postResponse").html(result);
                 },
                 error: function () {

@@ -14,3 +14,7 @@ body {
   background-color: #f5f5f5;
   text-align: center;
 }
+.container {
+  width: auto;
+  max-width: 1000px;
+}

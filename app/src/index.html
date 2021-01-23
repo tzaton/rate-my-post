@@ -71,12 +71,14 @@
                 <div class="form-row">
                     <div class="form-group col-md-12">
                         <label for="postTags" class="font-weight-bold">Tags</label>
-                        <input type="text" class="form-control" id="postTags" required placeholder="tag1, tag2, ...">
+                        <input type="text" class="form-control" id="postTags" required placeholder="tag1, tag2, ..."
+                            pattern="^[\w\-]+?(,\s?[\w+\-]+?){0,4}$">
                         <small id="postTitleHelp" class="text-muted">
                             List of tags to be added to the post (at least one), comma-separated
                         </small>
                         <div class="invalid-feedback">
-                            At least 1 tag is required.
+                            At least 1 tag is required (max 5). Tag names can only consist of letters, numbers or
+                            hyphens.
                         </div>
                     </div>
                 </div>
@@ -111,7 +113,8 @@
     </main>
     <footer class="footer">
         <div class="container">
-            <span class="text-muted">&copy; Tomasz Zatoń | 2021</span>
+            <span class="text-muted">&copy; Tomasz Zatoń | <a href="https://github.com/tzaton/rate-my-post">GitHub</a> |
+                2021</span>
         </div>
     </footer>
 
