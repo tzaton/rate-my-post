@@ -11,7 +11,7 @@ google-pasta==0.2.0
 graphviz==0.13.2
 idna==2.10
 importlib-metadata==3.2.0
-Jinja2==2.11.2
+Jinja2==2.11.3
 jmespath==0.10.0
 MarkupSafe==1.1.1
 numpy==1.19.4
