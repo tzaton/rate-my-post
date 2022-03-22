@@ -14,7 +14,7 @@ importlib-metadata==3.2.0
 Jinja2==2.11.3
 jmespath==0.10.0
 MarkupSafe==1.1.1
-numpy==1.19.4
+numpy==1.21.0
 packaging==20.8
 protobuf==3.15.0
 protobuf3-to-dict==0.1.5
